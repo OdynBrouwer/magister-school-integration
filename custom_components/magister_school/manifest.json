@@ -1,12 +1,12 @@
 {
   "domain": "magister_school",
-  "name": "Magister School",
+  "name": "Magister School", 
   "codeowners": ["@OdynBrouwer"],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/OdynBrouwer/magister-school-integration",
-  "integration_type": "device", 
+  "integration_type": "device",
   "iot_class": "cloud_polling",
   "requirements": [],
-  "version": "1.0.2"  // ← UPDATE VERSION
+  "version": "1.0.3"
 }

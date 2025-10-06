@@ -1,0 +1,21 @@
+{
+    "config": {
+      "step": {
+        "user": {
+          "title": "Magister configuratie",
+          "description": "Voer hieronder de gegevens in om verbinding te maken met Magister.",
+          "data": {
+            "school": "School (bijv. 'trevianum')",
+            "user": "Gebruikersnaam (meestal e-mailadres of leerlingnummer)",
+            "pass": "Wachtwoord"
+          }
+        }
+      },
+      "error": {
+        "invalid_auth": "Ongeldige gebruikersnaam of wachtwoord",
+        "cannot_connect": "Kan geen verbinding maken met de school",
+        "unknown": "Onbekende fout"
+      }
+    }
+  }
+  

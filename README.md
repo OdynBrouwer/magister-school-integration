@@ -26,6 +26,4 @@ Integreer Magister schoolinformatie in Home Assistant.
 Voeg via Settings → Devices & Services → Add Integration → Zoek "Magister School"
 
 ## Lovelace Card
-```yaml
-type: custom:magister-school-card
-entity: sensor.magister_kind_naam# magister-school-integration
+

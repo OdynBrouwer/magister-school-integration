@@ -1,0 +1,34 @@
+{
+    "config": {
+      "step": {
+        "user": {
+          "title": "Magister configuratie",
+          "description": "Voer hieronder de gegevens in om verbinding te maken met Magister.",
+          "data": {
+            "school": "School (bijv. 'trevianum')",
+            "user": "Gebruikersnaam (meestal e-mailadres of leerlingnummer)",
+            "pass": "Wachtwoord"
+          }
+        }
+      },
+      "error": {
+        "invalid_auth": "Ongeldige gebruikersnaam of wachtwoord.",
+        "unknown": "Onbekende fout, controleer de logbestanden."
+      },
+      "abort": {
+        "already_configured": "Deze Magister gebruiker is al geconfigureerd."
+      }
+    },
+    "options": {
+      "step": {
+        "user": {
+          "title": "Magister opties",
+          "description": "Hier kun je instellingen wijzigen.",
+          "data": {
+            "poll_interval": "Interval in seconden voor het ophalen van data"
+          }
+        }
+      }
+    }
+  }
+  

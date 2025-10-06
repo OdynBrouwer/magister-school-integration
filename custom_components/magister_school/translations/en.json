@@ -1,0 +1,21 @@
+{
+    "config": {
+      "step": {
+        "user": {
+          "title": "Magister configuration",
+          "description": "Enter your details below to connect to Magister.",
+          "data": {
+            "school": "School (e.g. 'trevianum')",
+            "user": "Username (usually your email or student number)",
+            "pass": "Password"
+          }
+        }
+      },
+      "error": {
+        "invalid_auth": "Invalid username or password",
+        "cannot_connect": "Cannot connect to the school",
+        "unknown": "Unknown error"
+      }
+    }
+  }
+  

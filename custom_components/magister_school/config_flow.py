@@ -3,7 +3,7 @@ from homeassistant import config_entries
 from homeassistant.core import callback
 import logging
 
-from .const import DOMAIN, CONF_SCHOOL, CONF_USER, CONF_PASS  # ← IMPORT CONSTANTS
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 

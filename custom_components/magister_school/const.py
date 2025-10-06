@@ -1,4 +1,4 @@
-DOMAIN = "magister"
+DOMAIN = "magister_school"
 CONF_SCHOOL = "school"
 CONF_USER = "user"
 CONF_PASS = "pass"

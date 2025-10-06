@@ -1,0 +1,5 @@
+DOMAIN = "magister"
+CONF_SCHOOL = "school"
+CONF_USER = "user"
+CONF_PASS = "pass"
+DEFAULT_NAME = "Magister Data"

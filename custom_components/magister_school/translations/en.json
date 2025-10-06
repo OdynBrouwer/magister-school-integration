@@ -1,21 +1,107 @@
 {
-    "config": {
-      "step": {
-        "user": {
-          "title": "Magister configuration",
-          "description": "Enter your details below to connect to Magister.",
-          "data": {
-            "school": "School (e.g. 'trevianum')",
-            "user": "Username (usually your email or student number)",
-            "pass": "Password"
-          }
+  "config": {
+    "step": {
+      "user": {
+        "title": "Magister Configuration",
+        "description": "Enter your Magister login credentials",
+        "data": {
+          "school": "School", 
+          "user": "Username",
+          "pass": "Password"
         }
-      },
-      "error": {
-        "invalid_auth": "Invalid username or password",
-        "cannot_connect": "Cannot connect to the school",
-        "unknown": "Unknown error"
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid authentication",
+      "cannot_connect": "Cannot connect to Magister", 
+      "unknown": "Unexpected error occurred",
+      "timeout": "Timeout connecting to Magister"
+    },
+    "abort": {
+      "already_configured": "This account is already configured",
+      "reauth_successful": "Re-authentication successful", 
+      "invalid_auth": "Invalid authentication"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Magister Options",
+        "description": "Configure update settings",
+        "data": {
+          "poll_interval": "Update interval (seconds)",
+          "scan_interval": "Scan interval (seconds)" 
+        }
       }
     }
+  },
+  "title": "Magister School",
+  "system_health": {
+    "info": {
+      "version": "Version",
+      "can_reach_server": "Magister server reachability"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "magister_main_data": {
+        "name": "Magister Main Data",
+        "state": "Last update"
+      },
+      "magister_{kind}_overview": {
+        "name": "Magister {kind} Overview",
+        "state": "Appointments today"
+      },
+      "magister_{kind}_afspraken_vandaag": {
+        "name": "Magister {kind} Appointments Today", 
+        "state": "Number of appointments"
+      },
+      "magister_{kind}_huiswerk": {
+        "name": "Magister {kind} Homework",
+        "state": "Number of homework items"
+      },
+      "magister_{kind}_volgende_afspraak": {
+        "name": "Magister {kind} Next Appointment",
+        "state": "Next appointment"
+      },
+      "magister_{kind}_cijfers": {
+        "name": "Magister {kind} Grades", 
+        "state": "Number of grades"
+      },
+      "magister_{kind}_afspraken": {
+        "name": "Magister {kind} Appointments",
+        "state": "Total appointments"
+      },
+      "magister_{kind}_wijzigingen": {
+        "name": "Magister {kind} Schedule Changes",
+        "state": "Number of changes"
+      },
+      "magister_{kind}_opdrachten": {
+        "name": "Magister {kind} Assignments",
+        "state": "Number of assignments"
+      },
+      "magister_{kind}_absenties": {
+        "name": "Magister {kind} Absences", 
+        "state": "Number of absences"
+      },
+      "magister_{kind}_studiewijzers": {
+        "name": "Magister {kind} Study Guides", 
+        "state": "Number of study guides"
+      },
+      "magister_{kind}_activiteiten": {
+        "name": "Magister {kind} Activities",
+        "state": "Number of activities"
+      },
+      "magister_{kind}_aanmeldingen": {
+        "name": "Magister {kind} Enrollments",
+        "state": "Number of enrollments"
+      }
+    }
+  },
+  "services": {
+    "refresh": {
+      "name": "Refresh", 
+      "description": "Force a refresh of Magister data"
+    }
   }
-  
+}

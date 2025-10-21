@@ -15,7 +15,7 @@ class MagisterAPI:
         self.authcode = DEFAULT_AUTHCODE
 
     def get_data(self):
-        script_path = "/config/custom_components/magister/magister.py"
+        script_path = "/config/custom_components/magister_school/magister.py"
         cmd = [
             "python3", script_path,
             "--json",

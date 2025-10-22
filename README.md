@@ -18,7 +18,7 @@ Integreer Magister schoolinformatie direct in je Home Assistant dashboard. Toon 
 ## 📋 Vereisten
 
 - Home Assistant 2023.8.0 of hoger
-- Magister account met toegang tot de API
+- Magister account met toegang 
 - HACS (aanbevolen) of handmatige installatie
 
 ## 🔧 Installatie

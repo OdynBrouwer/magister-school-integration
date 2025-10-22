@@ -144,14 +144,17 @@ Bijdragen zijn welkom! Voel je vrij om:
 - Pull requests in te dienen voor verbeteringen
 - De documentatie te verbeteren
 
-## Tip: Gebruik dit in Sjablonen om alle sensoren in kaart te brengen om deze vervolgens aan " recorder:"  toe te voegen.
+## 🗃️ Database Optimalisatie
 
+De sensors bevatten veel data. Voeg deze toe aan je recorder exclude om database issues te voorkomen:
+ 
+Gebruik deze template om alle Magister sensors automatisch te vinden:
 ```
     {% set entities = states.sensor | selectattr('entity_id', 'match', 'sensor.magister_.*') | map(attribute='entity_id') | list %}
     {{ entities }}
 ```
 Voorbeeld:
-```
+```yaml
 # configuration.yaml
 recorder:
   purge_keep_days: 2

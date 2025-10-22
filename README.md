@@ -13,6 +13,7 @@ Integreer Magister schoolinformatie direct in je Home Assistant dashboard. Toon 
 - **👨‍👩‍👧‍👦 Multi-Kind Support** - Ondersteuning voor meerdere kinderen
 - **🔄 Automatische Updates** - Data wordt regelmatig ververst
 - **🎨 Lovelace Card** - Mooie weergave voor je dashboard ([separate card available](https://github.com/OdynBrouwer/magister-school-card))
+- **🧹 Automatische cleanup** – Verwijdert `_1`, `_2` etc. na updates
 
 ## 📋 Vereisten
 

@@ -144,6 +144,26 @@ Bijdragen zijn welkom! Voel je vrij om:
 - Pull requests in te dienen voor verbeteringen
 - De documentatie te verbeteren
 
+## Tip: Gebruik dit in Sjablonen om alle sensoren in kaart te brengen om deze vervolgens aan " recorder:"  toe te voegen.
+
+```
+    {% set entities = states.sensor | selectattr('entity_id', 'match', 'sensor.magister_.*') | map(attribute='entity_id') | list %}
+    {{ entities }}
+```
+Voorbeeld:
+```
+# configuration.yaml
+recorder:
+  purge_keep_days: 2
+  commit_interval: 30
+  auto_purge: true
+  exclude:
+    entities:
+      - sensor.magister_agenda_vandaag_en_morgen
+      - sensor.magister_data
+```
+
+
 ## 📄 Licentie
 
 Deze integratie is vrijgegeven onder de MIT licentie. Zie het [LICENSE](LICENSE) bestand voor details.

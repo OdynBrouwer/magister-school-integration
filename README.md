@@ -67,6 +67,20 @@ Na installatie worden de volgende sensors aangemaakt:
 - `sensor.magister_[kind_naam]_activiteiten` - Activiteiten
 - `sensor.magister_[kind_naam]_aanmeldingen` - Aanmeldingen
 
+### 🧹 Automatische cleanup van duplicaat-entities (suffixes zoals `_1`, `_2`)
+
+Na een update via HACS kan het soms voorkomen dat Home Assistant tijdelijk entities opnieuw registreert, wat leidt tot suffixes zoals `_1`, `_2`, etc. in entity-namen (bijv. `sensor.magister_jan_huiswerk_1`).
+
+Vanaf versie **1.x.x** (of: *in de volgende release*) voert de integratie **automatisch een cleanup uit bij opstart**:
+- Entities met suffixes (`_1` t/m `_5`) worden hernoemd naar de originele naam **als die nog niet bestaat**.
+- Dit gebeurt **één keer per opstart**, zonder prestatieverlies.
+- Als er suffixes zijn opgeruimd, verschijnt er een melding in Home Assistant.
+
+> 💡 **Handmatig opruimen?**  
+> Verwijder oude entities handmatig via **Settings → Devices & Services → Entities**, of herstart Home Assistant om de automatische cleanup te activeren.
+
+Deze functionaliteit maakt gebruik van de **entity registry** en is volledig veilig.
+
 ## 🎨 Lovelace Card
 
 Voor een mooie dashboard weergave, installeer de [Magister School Lovelace Card](https://github.com/OdynBrouwer/magister-school-card):

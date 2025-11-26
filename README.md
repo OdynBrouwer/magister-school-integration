@@ -11,14 +11,16 @@ Integreer Magister schoolinformatie direct in je Home Assistant dashboard. Toon 
 - **📚 Huiswerk & Opdrachten** - Toon openstaande huiswerkopdrachten
 - **⚠️ Roosterwijzigingen** - Blijf op de hoogte van laatste wijzigingen
 - **👨‍👩‍👧‍👦 Multi-Kind Support** - Ondersteuning voor meerdere kinderen
+- **👤 Student Accounts** - Studenten kunnen hun eigen account gebruiken
 - **🔄 Automatische Updates** - Data wordt regelmatig ververst
 - **🎨 Lovelace Card** - Mooie weergave voor je dashboard ([separate card available](https://github.com/OdynBrouwer/magister-school-card))
 - **🧹 Automatische cleanup** – Verwijdert `_1`, `_2` etc. na updates
+- **🔐 Multi-Account Support** - Gebruik meerdere accounts tegelijk zonder conflicts
 
 ## 📋 Vereisten
 
 - Home Assistant 2023.8.0 of hoger
-- Magister account met toegang 
+- Magister account met toegang (ouder of student account)
 - HACS (aanbevolen) of handmatige installatie
 
 ## 🔧 Installatie
@@ -46,6 +48,15 @@ Integreer Magister schoolinformatie direct in je Home Assistant dashboard. Toon 
    - **School**: Je schoolnaam (bijv. `zuidermavo`)
    - **Gebruikersnaam**: Je Magister gebruikersnaam
    - **Wachtwoord**: Je Magister wachtwoord
+
+### 👤 Student vs Ouder Accounts
+
+De integratie werkt met beide account types:
+
+- **Ouder Account**: Toont data voor alle gekoppelde kinderen
+- **Student Account**: Toont data voor de ingelogde student zelf
+
+Je kunt ook meerdere accounts tegelijk configureren zonder conflicts!
 
 ## 📊 Beschikbare Sensors
 

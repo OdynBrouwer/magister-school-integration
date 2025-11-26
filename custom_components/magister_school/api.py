@@ -1,6 +1,7 @@
 import subprocess
 import json
 import logging
+from pathlib import Path
 from .const import CONF_SCHOOL, CONF_USER, CONF_PASS
 
 _LOGGER = logging.getLogger(__name__)
@@ -15,7 +16,8 @@ class MagisterAPI:
         self.authcode = DEFAULT_AUTHCODE
 
     def get_data(self):
-        script_path = "/config/custom_components/magister_school/magister.py"
+        script_dir = Path(__file__).resolve().parent
+        script_path = str(script_dir) + "/magister.py"
         cmd = [
             "python3", script_path,
             "--json",

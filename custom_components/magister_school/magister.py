@@ -468,12 +468,7 @@ def main():
         local_config = script_dir / ".magisterrc"
         args.config = local_config if local_config.exists() else Path.home() / ".magisterrc"
 
-    if not args.cache:
-        script_dir = Path(__file__).parent
-        local_cache = script_dir / ".magister_auth_cache"
-        args.cache = local_cache if local_cache.exists() else Path.home() / ".magister_auth_cache"
-
-    # Config laden
+    # Config laden - we doen dit eerst om username/schoolserver te krijgen voor cache naam
     cfg = None
     if args.config.exists():
         try:
@@ -485,6 +480,20 @@ def main():
                 print(f"config: {e}")
     elif not args.json:
         print(f"Config file not found: {args.config}")
+
+    # Cache naam bepalen - maak per schoolserver + username uniek om conflicts te voorkomen
+    if not args.cache:
+        script_dir = Path(__file__).parent
+        cache_suffix = ""
+        if args.schoolserver and args.username:
+            # Sanitize filename characters
+            safe_school = args.schoolserver.replace('.', '_').replace('@', '_').replace('/', '_')
+            safe_user = args.username.replace('.', '_').replace('@', '_').replace('/', '_')
+            cache_suffix = f"_{safe_school}_{safe_user}"
+        
+        cache_name = f".magister_auth_cache{cache_suffix}"
+        local_cache = script_dir / cache_name
+        args.cache = local_cache if local_cache.exists() else Path.home() / cache_name
 
     # Cache laden
     acfg = None
@@ -522,15 +531,42 @@ def main():
     }
 
     d = mg.req("account")
+    
+    # Check if account request was successful
+    if not isinstance(d, dict) or "Persoon" not in d:
+        if not args.json:
+            print(f"ERROR: Could not get account info. Response: {d}")
+        sys.exit(1)
+    
     ouderid = d["Persoon"]["Id"]
-    k = mg.req("personen", ouderid, "kinderen")
+    
+    # Try to get children - will fail for student accounts
+    try:
+        k = mg.req("personen", ouderid, "kinderen")
+    except Exception as e:
+        # If request fails completely, treat as student account
+        k = {"Fouttype": "OnvoldoendePrivileges"}
 
-    for kind in k["Items"]:
-        kind_naam = f"{kind['Roepnaam']} {kind['Achternaam']}"
+    # Check if student account (gets permission error)
+    if k.get('Fouttype'):
+        # Student account - use own ID as "kind"
+        kinderen = [{
+            "Id": d["Persoon"]["Id"],
+            "Roepnaam": d["Persoon"].get("Roepnaam", ""),
+            "Achternaam": d["Persoon"].get("Achternaam", ""),
+            "Geboortedatum": d["Persoon"].get("Geboortedatum", ""),
+            "Stamnummer": d["Persoon"].get("Stamnummer", "")
+        }]
+    else:
+        # Parent account - use children list
+        kinderen = k.get("Items", [])
+
+    for kind in kinderen:
+        kind_naam = f"{kind.get('Roepnaam', '')} {kind.get('Achternaam', '')}"
         kind_data = {
             "naam": kind_naam,
-            "stamnummer": kind['Stamnummer'],
-            "geboortedatum": kind['Geboortedatum']
+            "stamnummer": kind.get('Stamnummer', ''),
+            "geboortedatum": kind.get('Geboortedatum', '')
         }
         kindid = kind["Id"]
 

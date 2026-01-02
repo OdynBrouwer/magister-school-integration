@@ -72,7 +72,7 @@ class MagisterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 class MagisterOptionsFlow(config_entries.OptionsFlow):
     def __init__(self, config_entry):
-        self.config_entry = config_entry
+        self._config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
         return await self.async_step_user(user_input)
@@ -85,7 +85,7 @@ class MagisterOptionsFlow(config_entries.OptionsFlow):
 
         options_schema = vol.Schema(
             {
-                vol.Optional("poll_interval", default=self.config_entry.options.get("poll_interval", 300)): int,
+                vol.Optional("poll_interval", default=self._config_entry.options.get("poll_interval", 300)): int,
             }
         )
 

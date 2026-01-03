@@ -14,7 +14,7 @@ SUFFIXES_TO_CLEAN = ["_1", "_2", "_3", "_4", "_5"]
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Magister from a config entry."""
     hass.data.setdefault(DOMAIN, {})
-    
+
     # Create coordinator
     coordinator = MagisterDataUpdateCoordinator(
         hass,
@@ -22,7 +22,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.data["user"],
         entry.data["pass"]
     )
-    
+
     # Store coordinator
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
@@ -33,8 +33,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _cleanup_suffix_entities(hass)
 
     # Forward setup to sensor platform
-    await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
-    
+    await hass.config_entries.async_forward_entry_setups(entry, ["sensor","calendar"])
+
     return True
 
 async def _cleanup_suffix_entities(hass: HomeAssistant):
@@ -44,7 +44,7 @@ async def _cleanup_suffix_entities(hass: HomeAssistant):
 
     # Scan alle entities die met 'sensor.magister_' beginnen
     for entity_id in list(registry.entities.keys()):
-        if not entity_id.startswith("sensor.magister_"):
+        if not (entity_id.startswith(("sensor.magister_", "calendar.magister_"))):
             continue
 
         cleaned_id = None
@@ -89,6 +89,6 @@ async def _cleanup_suffix_entities(hass: HomeAssistant):
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    if unload_ok := await hass.config_entries.async_unload_platforms(entry, ["sensor"]):
+    if unload_ok := await hass.config_entries.async_unload_platforms(entry, ["sensor","calendar"]):
         hass.data[DOMAIN].pop(entry.entry_id)
     return unload_ok

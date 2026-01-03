@@ -17,7 +17,7 @@ class MagisterAPI:
 
     def get_data(self):
         script_dir = Path(__file__).resolve().parent
-        script_path = str(script_dir) + "/magister.py"
+        script_path = str(script_dir) + "/script/magister.py"
         cmd = [
             "python3", script_path,
             "--json",
@@ -26,17 +26,17 @@ class MagisterAPI:
             "--password", self.password,
             "--authcode", self.authcode
         ]
-        
+
         try:
             result = subprocess.run(
-                cmd, 
-                capture_output=True, 
-                text=True, 
+                cmd,
+                capture_output=True,
+                text=True,
                 timeout=30,
                 check=True
             )
             return json.loads(result.stdout)
-            
+
         except subprocess.TimeoutExpired:
             _LOGGER.error("Magister script timeout")
             raise

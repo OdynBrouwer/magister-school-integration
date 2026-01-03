@@ -618,11 +618,14 @@ def main():
                 "start": datum(item.get("Start") or item.get("Datum")),
                 "einde": datum(item.get("Einde") or item.get("Eind")),
                 "type": infotstr(item.get("InfoType", 0)),
-                "lokaal": item.get("Lokatie", ""),
+                "lokaal": ", ".join(filter(None, [item.get("Lokatie")] + [l.get("Naam") for l in (item.get("Lokalen") or [])])),
                 "omschrijving": item.get("Omschrijving", ""),
                 "inhoud": dehtml(item.get("Inhoud", "")),
-                "vak": item.get("Vak", ""),
-                "is_huiswerk": item.get("InfoType", 0) == 1
+                "vak": ", ".join(filter(None, ([item.get("Vak", {}).get("Naam")] if item.get("Vak") else []) + [v.get("Naam") for v in (item.get("Vakken") or [])])),
+                "docent": ", ".join(filter(None, ([item.get("Docent", {}).get("Naam")] if item.get("Docent") else []) + [d.get("Naam") for d in (item.get("Docenten") or [])])),
+                "is_huiswerk": item.get("InfoType", 0) == 1,
+                "lesuurstart": item.get("LesuurVan"),
+                "lesuureinde": item.get("LesuurTotMet"),
             }
             for item in afspraken.get("Items", [])
         ]

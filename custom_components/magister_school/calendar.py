@@ -64,12 +64,35 @@ def _create_calendar_event(afspraak: dict) -> CalendarEvent:
     if start_dt is None or end_dt is None:
         raise ValueError("Afspraak missing start or einde datetime")
 
+    parts: list[str] = []
+    if afspraak.get("inhoud"):
+        parts.append(f"{afspraak.get('inhoud')}\n")
+
+    lesuurstart = afspraak.get("lesuurstart")
+    if lesuurstart:
+        lesuureinde = afspraak.get("lesuureinde")
+        parts.append(
+            f"Lesuur: {lesuurstart}"
+            + (
+                f" - {lesuureinde}"
+                if lesuureinde and lesuureinde != lesuurstart
+                else ""
+            )
+        )
+
+    if afspraak.get("vak"):
+        parts.append(f"Vak: {afspraak.get('vak')}")
+    if afspraak.get("docent"):
+        parts.append(f"Docent: {afspraak.get('docent')}")
+
+    description = "\n".join(parts)
+
     return CalendarEvent(
         start=start_dt,
         end=end_dt,
         summary=afspraak.get("omschrijving", "Afspraak"),
-        description=afspraak.get("inhoud", ""),
         location=afspraak.get("lokaal", ""),
+        description=description,
     )
 
 

@@ -444,7 +444,7 @@ def safe_datum_field(item, *keys):
         if v:
             return datum(v)
     return "?"
-    
+
 def main():
     parser = argparse.ArgumentParser(description='Magister info dump')
     parser.add_argument('--debug', '-d', action='store_true', help=argparse.SUPPRESS)
@@ -490,7 +490,7 @@ def main():
             safe_school = args.schoolserver.replace('.', '_').replace('@', '_').replace('/', '_')
             safe_user = args.username.replace('.', '_').replace('@', '_').replace('/', '_')
             cache_suffix = f"_{safe_school}_{safe_user}"
-        
+
         cache_name = f".magister_auth_cache{cache_suffix}"
         local_cache = script_dir / cache_name
         args.cache = local_cache if local_cache.exists() else Path.home() / cache_name
@@ -531,15 +531,15 @@ def main():
     }
 
     d = mg.req("account")
-    
+
     # Check if account request was successful
     if not isinstance(d, dict) or "Persoon" not in d:
         if not args.json:
             print(f"ERROR: Could not get account info. Response: {d}")
         sys.exit(1)
-    
+
     ouderid = d["Persoon"]["Id"]
-    
+
     # Try to get children - will fail for student accounts
     try:
         k = mg.req("personen", ouderid, "kinderen")
@@ -618,11 +618,14 @@ def main():
                 "start": datum(item.get("Start") or item.get("Datum")),
                 "einde": datum(item.get("Einde") or item.get("Eind")),
                 "type": infotstr(item.get("InfoType", 0)),
-                "lokaal": item.get("Lokatie", ""),
+                "lokaal": ", ".join(filter(None, [item.get("Lokatie")] + [l.get("Naam") for l in (item.get("Lokalen") or [])])),
                 "omschrijving": item.get("Omschrijving", ""),
                 "inhoud": dehtml(item.get("Inhoud", "")),
-                "vak": item.get("Vak", ""),
-                "is_huiswerk": item.get("InfoType", 0) == 1
+                "vak": ", ".join(filter(None, ([item.get("Vak", {}).get("Naam")] if item.get("Vak") else []) + [v.get("Naam") for v in (item.get("Vakken") or [])])),
+                "docent": ", ".join(filter(None, ([item.get("Docent", {}).get("Naam")] if item.get("Docent") else []) + [d.get("Naam") for d in (item.get("Docenten") or [])])),
+                "is_huiswerk": item.get("InfoType", 0) == 1,
+                "lesuurstart": item.get("LesuurVan"),
+                "lesuureinde": item.get("LesuurTotMet"),
             }
             for item in afspraken.get("Items", [])
         ]

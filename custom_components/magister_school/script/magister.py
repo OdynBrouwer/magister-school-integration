@@ -444,7 +444,7 @@ def safe_datum_field(item, *keys):
         if v:
             return datum(v)
     return "?"
-    
+
 def main():
     parser = argparse.ArgumentParser(description='Magister info dump')
     parser.add_argument('--debug', '-d', action='store_true', help=argparse.SUPPRESS)
@@ -490,7 +490,7 @@ def main():
             safe_school = args.schoolserver.replace('.', '_').replace('@', '_').replace('/', '_')
             safe_user = args.username.replace('.', '_').replace('@', '_').replace('/', '_')
             cache_suffix = f"_{safe_school}_{safe_user}"
-        
+
         cache_name = f".magister_auth_cache{cache_suffix}"
         local_cache = script_dir / cache_name
         args.cache = local_cache if local_cache.exists() else Path.home() / cache_name
@@ -531,15 +531,15 @@ def main():
     }
 
     d = mg.req("account")
-    
+
     # Check if account request was successful
     if not isinstance(d, dict) or "Persoon" not in d:
         if not args.json:
             print(f"ERROR: Could not get account info. Response: {d}")
         sys.exit(1)
-    
+
     ouderid = d["Persoon"]["Id"]
-    
+
     # Try to get children - will fail for student accounts
     try:
         k = mg.req("personen", ouderid, "kinderen")

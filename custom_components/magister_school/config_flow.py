@@ -4,6 +4,7 @@ from homeassistant.core import callback
 import logging
 
 from .const import DOMAIN
+from .api import MagisterAPI, AuthenticationRequired
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -13,9 +14,17 @@ async def validate_input(hass, data):
     user = data["user"]
     password = data["pass"]
 
-    # TODO: Hier moet jouw echte Magister login/test functie komen
     if not school or not user or not password:
         raise ValueError("invalid_auth")
+
+    api = MagisterAPI(school, user, password)
+    try:
+        await hass.async_add_executor_job(api.get_data)
+    except AuthenticationRequired:
+        raise ValueError("invalid_auth")
+    except Exception as err:
+        _LOGGER.error("Could not connect to Magister during validation: %s", err)
+        raise ValueError("cannot_connect")
 
     return {
         "title": f"Magister - {school}",
@@ -62,6 +71,30 @@ class MagisterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user",
             data_schema=data_schema,
+            errors=errors,
+        )
+
+    async def async_step_reauth(self, user_input=None):
+        """Handel re-authenticatie af voor bestaande config entries."""
+        entry = self.hass.config_entries.async_get_entry(self.context.get("entry_id"))
+        errors = {}
+
+        if user_input is not None:
+            try:
+                await validate_input(self.hass, {"school": entry.data["school"], "user": entry.data["user"], "pass": user_input["pass"]})
+                new_data = {**entry.data, "pass": user_input["pass"]}
+                self.hass.config_entries.async_update_entry(entry, data=new_data)
+                await self.hass.config_entries.async_reload(entry.entry_id)
+                return self.async_abort(reason="reauth_successful")
+            except ValueError as err:
+                if str(err) == "invalid_auth":
+                    errors["base"] = "invalid_auth"
+                else:
+                    errors["base"] = "cannot_connect"
+
+        return self.async_show_form(
+            step_id="reauth",
+            data_schema=vol.Schema({vol.Required("pass"): str}),
             errors=errors,
         )
 

@@ -1,0 +1,16 @@
+# Ignore Python virtual environment
+venv/
+
+# Ignore test output
+test_output.txt
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+build/
+dist/
+*.egg-info/

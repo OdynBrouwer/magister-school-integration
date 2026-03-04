@@ -10,6 +10,25 @@ import os
 import traceback
 from pathlib import Path
 import argparse
+import hmac
+import hashlib
+import struct
+import time
+import base64
+
+
+def generate_totp(secret: str, digits: int = 6, period: int = 30) -> str:
+    """Generate a TOTP code from a base32-encoded secret."""
+    secret_clean = secret.upper().replace(' ', '').replace('-', '')
+    padding = (8 - len(secret_clean) % 8) % 8
+    secret_bytes = base64.b32decode(secret_clean + '=' * padding)
+    counter = int(time.time()) // period
+    counter_bytes = struct.pack('>Q', counter)
+    h = hmac.new(secret_bytes, counter_bytes, hashlib.sha1).digest()
+    offset = h[-1] & 0x0F
+    code = struct.unpack('>I', h[offset:offset + 4])[0] & 0x7FFFFFFF
+    return str(code % (10 ** digits)).zfill(digits)
+
 
 def dehtml(html):
     """
@@ -308,14 +327,39 @@ class Magister:
         self.logprint("\n---- password ----")
         r = self.httpreq(f"https://{self.magisterserver}/challenges/password", json.dumps(d))
 
+        # Handle 2FA challenge after password
         if not r.get('redirectURL') or r.get('error'):
-            if r.get('action'):
+            action = r.get('action', '')
+            if action in ('totp', 'softtoken'):
+                self.logprint(f"\n---- {action} ----")
+                totp_secret = getattr(self.args, 'totp_secret', None)
+                if not totp_secret:
+                    if not getattr(self.args, "json", False):
+                        print(f"2FA ({action}) is required but no totp_secret was provided")
+                    return False
+                otp_code = generate_totp(totp_secret)
+                if self.args.verbose and not getattr(self.args, "json", False):
+                    print(f"-> Generated OTP code: {otp_code}")
+                otp_payload = dict(d)
+                if action == "softtoken":
+                    otp_payload["code"] = otp_code
+                    endpoint = "soft-token"
+                else:
+                    otp_payload["otp"] = otp_code
+                    endpoint = action
+                r = self.httpreq(f"https://{self.magisterserver}/challenges/{endpoint}", json.dumps(otp_payload))
+                if not r.get('redirectURL') or r.get('error'):
+                    if not getattr(self.args, "json", False):
+                        print(f"{action} challenge failed: '{r.get('error', 'no redirectURL')}'")
+                    return False
+            elif action:
                 if not getattr(self.args, "json", False):
-                    print("'%s' requested -> visit website" % r['action'])
+                    print("'%s' requested -> visit website" % action)
                 return False
-            if not getattr(self.args, "json", False):
-                print("ERROR '%s'" % r.get('error'))
-            return False
+            else:
+                if not getattr(self.args, "json", False):
+                    print("ERROR '%s'" % r.get('error'))
+                return False
 
         self.logprint("\n---- callback ----")
         url, html = self.httpredirurl(f"https://{self.magisterserver}" + r["redirectURL"])
@@ -459,6 +503,7 @@ def main():
     parser.add_argument('--username', help=argparse.SUPPRESS)
     parser.add_argument('--password', help=argparse.SUPPRESS)
     parser.add_argument("--authcode", help=argparse.SUPPRESS)
+    parser.add_argument('--totp-secret', dest='totp_secret', default=None, help=argparse.SUPPRESS)
     parser.add_argument('--schoolserver', help=argparse.SUPPRESS)
     parser.add_argument('--magisterserver', default='accounts.magister.net', help=argparse.SUPPRESS)
     args = parser.parse_args()

@@ -7,16 +7,27 @@
           "data": {
             "school": "School (bijv. 'trevianum')",
             "user": "Gebruikersnaam (meestal e-mailadres of leerlingnummer)",
-            "pass": "Wachtwoord"
+            "pass": "Wachtwoord",
+            "totp_secret": "2FA geheime sleutel (optioneel, alleen bij tweestapsverificatie)"
+          }
+        },
+        "reauth": {
+          "title": "Magister opnieuw inloggen",
+          "description": "Voer je nieuwe wachtwoord in. Laat de 2FA-sleutel leeg om de bestaande instelling te behouden.",
+          "data": {
+            "pass": "Wachtwoord",
+            "totp_secret": "2FA geheime sleutel (optioneel)"
           }
         }
       },
       "error": {
-        "invalid_auth": "Ongeldige gebruikersnaam of wachtwoord.",
+        "invalid_auth": "Ongeldige gebruikersnaam, wachtwoord of 2FA-sleutel.",
+        "cannot_connect": "Kan geen verbinding maken met Magister.",
         "unknown": "Onbekende fout, controleer de logbestanden."
       },
       "abort": {
-        "already_configured": "Deze Magister gebruiker is al geconfigureerd."
+        "already_configured": "Deze Magister gebruiker is al geconfigureerd.",
+        "reauth_successful": "Opnieuw inloggen geslaagd."
       }
     },
     "options": {

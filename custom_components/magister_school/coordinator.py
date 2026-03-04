@@ -12,8 +12,8 @@ _LOGGER = logging.getLogger(__name__)
 class MagisterDataUpdateCoordinator(DataUpdateCoordinator):
     """Coordinator voor Magister data updates."""
 
-    def __init__(self, hass: HomeAssistant, school: str, username: str, password: str):
-        self.api = MagisterAPI(school, username, password)
+    def __init__(self, hass: HomeAssistant, school: str, username: str, password: str, totp_secret: str = None):
+        self.api = MagisterAPI(school, username, password, totp_secret=totp_secret)
         
         super().__init__(
             hass,
@@ -31,7 +31,7 @@ class MagisterDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.error("Authenticatie vereist voor Magister: %s", err)
             await persistent_notification.async_create(
                 self.hass,
-                "Mogelijk nieuw wachtwoord nodig voor Magister. Ga naar Configuratie → Integrations → Magister om opnieuw in te loggen.",
+                "Mogelijk nieuw wachtwoord of onjuiste 2FA-sleutel voor Magister. Ga naar Configuratie → Integrations → Magister om opnieuw in te loggen.",
                 title="Magister - Re-authentication required",
             )
             raise ConfigEntryAuthFailed from err

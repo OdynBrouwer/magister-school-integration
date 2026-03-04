@@ -15,12 +15,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Magister from a config entry."""
     hass.data.setdefault(DOMAIN, {})
     
-    # Create coordinator
+    # Create coordinator (pass totp_secret if present)
     coordinator = MagisterDataUpdateCoordinator(
         hass,
         entry.data["school"],
         entry.data["user"],
-        entry.data["pass"]
+        entry.data["pass"],
+        totp_secret=entry.data.get("totp_secret"),
     )
     
     # Store coordinator

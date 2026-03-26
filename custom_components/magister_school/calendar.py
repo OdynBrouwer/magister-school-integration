@@ -84,6 +84,10 @@ def _create_calendar_event(afspraak: dict) -> CalendarEvent:
         parts.append(f"Vak: {afspraak.get('vak')}")
     if afspraak.get("docent"):
         parts.append(f"Docent: {afspraak.get('docent')}")
+    if afspraak.get("status"):
+        parts.append(f"Status: {afspraak.get('status')}")
+    if afspraak.get("soort"):
+        parts.append(f"Soort: {afspraak.get('soort')}")
 
     description = "\n".join(parts)
 

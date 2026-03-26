@@ -76,17 +76,65 @@ def deltaymd(years=0, days=0, weeks=0):
         t += timedelta(weeks=weeks)
     return "%04d-%02d-%02d" % (t.year, t.month, t.day)
 
-def infotstr(t):
-    typenames = ["", "hw", "T!", "TT", "SO", "MO", "in", "aa"]
-    if isinstance(t, int) and 0 <= t < len(typenames):
-        return typenames[t]
+AFSPRAAK_TYPE = {
+    0: "",
+    1: "Persoonlijk",
+    2: "Algemeen",
+    3: "Schoolbreed",
+    4: "Stage",
+    5: "Intake",
+    6: "Roostervrij",
+    7: "Kwt",
+    8: "Standby",
+    9: "Blokkade",
+    10: "Overig",
+    11: "Blokkade Lokaal",
+    12: "Blokkade Klas",
+    13: "Les",
+    14: "Studiehuis",
+    15: "Roostervrije Studie",
+    16: "Planning",
+    101: "Maatregelen",
+    102: "Presenties",
+    103: "ExamenRooster",
+}
+
+AFSPRAAK_STATUS = {
+    0: "",
+    1: "Geroosterd Automatisch",
+    2: "Geroosterd Handmatig",
+    3: "Gewijzigd",
+    4: "Vervallen Handmatig",
+    5: "Vervallen Automatisch",
+    6: "In Gebruik",
+    7: "Afgesloten",
+    8: "Ingezet",
+    9: "Verplaatst",
+    10: "Gewijzigd en Verplaatst",
+}
+
+AFSPRAAK_INFO_TYPE = {
+    0: "",
+    1: "Huiswerk",
+    2: "Proefwerk",
+    3: "Tentamen",
+    4: "Schriftelijke Overhoring",
+    5: "Mondelinge Overhoring",
+    6: "Informatie",
+    7: "Aantekening",
+}
+
+def infotstr(t, typenames):
+    if not isinstance(typenames, dict):
+        return "??"
+
     try:
-        it = int(t)
-        if 0 <= it < len(typenames):
-            return typenames[it]
-    except Exception:
-        pass
-    return "??"
+        i = int(t)
+    except (TypeError, ValueError):
+        return "??"
+
+    return typenames.get(i, "??")
+
 
 class Magister:
     """
@@ -617,7 +665,9 @@ def main():
             {
                 "start": datum(item.get("Start") or item.get("Datum")),
                 "einde": datum(item.get("Einde") or item.get("Eind")),
-                "type": infotstr(item.get("InfoType", 0)),
+                "status": infotstr(item.get("Status", 0), AFSPRAAK_STATUS),
+                "soort": infotstr(item.get("Type", 0), AFSPRAAK_TYPE),
+                "type": infotstr(item.get("InfoType", 0), AFSPRAAK_INFO_TYPE),
                 "lokaal": ", ".join(filter(None, [item.get("Lokatie")] + [l.get("Naam") for l in (item.get("Lokalen") or [])])),
                 "omschrijving": item.get("Omschrijving", ""),
                 "inhoud": dehtml(item.get("Inhoud", "")),
@@ -634,10 +684,17 @@ def main():
             {
                 "start": safe_datum_field(item, "Start", "Datum"),
                 "einde": safe_datum_field(item, "Eind", "Einde"),
-                "type": infotstr(item.get("InfoType", 0)),
+                "status": infotstr(item.get("Status", 0), AFSPRAAK_STATUS),
+                "soort": infotstr(item.get("Type", 0), AFSPRAAK_TYPE),
+                "type": infotstr(item.get("InfoType", 0), AFSPRAAK_INFO_TYPE),
                 "lokaal": item.get("Lokatie", ""),
                 "omschrijving": item.get("Omschrijving", ""),
-                "inhoud": dehtml(item.get("Inhoud", ""))
+                "inhoud": dehtml(item.get("Inhoud", "")),
+                "vak": ", ".join(filter(None, ([item.get("Vak", {}).get("Naam")] if item.get("Vak") else []) + [v.get("Naam") for v in (item.get("Vakken") or [])])),
+                "docent": ", ".join(filter(None, ([item.get("Docent", {}).get("Naam")] if item.get("Docent") else []) + [d.get("Naam") for d in (item.get("Docenten") or [])])),
+                "is_huiswerk": item.get("InfoType", 0) == 1,
+                "lesuurstart": item.get("LesuurVan"),
+                "lesuureinde": item.get("LesuurTotMet"),
             }
             for item in wijzigingen.get("Items", [])
         ]

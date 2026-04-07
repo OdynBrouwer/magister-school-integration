@@ -19,9 +19,13 @@ import base64
 
 def generate_totp(secret: str, digits: int = 6, period: int = 30) -> str:
     """Generate a TOTP code from a base32-encoded secret."""
-    secret_clean = secret.upper().replace(' ', '').replace('-', '')
+    # Normalize: remove spaces, dashes, uppercase, strip padding
+    secret_clean = secret.upper().replace(' ', '').replace('-', '').rstrip('=')
+    # Only keep valid base32 characters
+    secret_clean = ''.join(c for c in secret_clean if c in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567')
+    # Add padding if needed
     padding = (8 - len(secret_clean) % 8) % 8
-    secret_bytes = base64.b32decode(secret_clean + '=' * padding)
+    secret_bytes = base64.b32decode(secret_clean + '=' * padding, casefold=True)
     counter = int(time.time()) // period
     counter_bytes = struct.pack('>Q', counter)
     h = hmac.new(secret_bytes, counter_bytes, hashlib.sha1).digest()

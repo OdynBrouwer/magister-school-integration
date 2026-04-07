@@ -29,7 +29,7 @@ class MagisterDataUpdateCoordinator(DataUpdateCoordinator):
             return data
         except AuthenticationRequired as err:
             _LOGGER.error("Authenticatie vereist voor Magister: %s", err)
-            await persistent_notification.async_create(
+            persistent_notification.async_create(
                 self.hass,
                 "Mogelijk nieuw wachtwoord of onjuiste 2FA-sleutel voor Magister. Ga naar Configuratie → Integrations → Magister om opnieuw in te loggen.",
                 title="Magister - Re-authentication required",

@@ -18,6 +18,14 @@
             "pass": "Wachtwoord",
             "totp_secret": "2FA geheime sleutel (optioneel)"
           }
+        },
+        "reauth_confirm": {
+          "title": "Magister opnieuw inloggen",
+          "description": "Voer je nieuwe wachtwoord in. Laat de 2FA-sleutel leeg om de bestaande instelling te behouden.",
+          "data": {
+            "pass": "Wachtwoord",
+            "totp_secret": "2FA geheime sleutel (optioneel)"
+          }
         }
       },
       "error": {

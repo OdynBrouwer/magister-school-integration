@@ -5,9 +5,18 @@
         "title": "Magister Configuration",
         "description": "Enter your Magister login credentials",
         "data": {
-          "school": "School", 
+          "school": "School",
           "user": "Username",
-          "pass": "Password"
+          "pass": "Password",
+          "totp_secret": "2FA secret key (optional, only for two-factor authentication)"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Magister Re-authentication",
+        "description": "Enter your new password. Leave the 2FA field empty to keep the existing setting.",
+        "data": {
+          "pass": "Password",
+          "totp_secret": "2FA secret key (optional)"
         }
       }
     },

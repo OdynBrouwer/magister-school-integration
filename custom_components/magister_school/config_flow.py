@@ -17,7 +17,9 @@ async def validate_input(hass, data):
     if not school or not user or not password:
         raise ValueError("invalid_auth")
 
-    api = MagisterAPI(school, user, password)
+    totp_secret = data.get("totp_secret") or None
+
+    api = MagisterAPI(school, user, password, totp_secret=totp_secret)
     try:
         await hass.async_add_executor_job(api.get_data)
     except AuthenticationRequired:
@@ -65,6 +67,7 @@ class MagisterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required("school"): str,
                 vol.Required("user"): str,
                 vol.Required("pass"): str,
+                vol.Optional("totp_secret"): str,
             }
         )
 
@@ -74,15 +77,27 @@ class MagisterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_reauth(self, user_input=None):
+    async def async_step_reauth(self, entry_data=None):
         """Handel re-authenticatie af voor bestaande config entries."""
-        entry = self.hass.config_entries.async_get_entry(self.context.get("entry_id"))
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(self, user_input=None):
+        """Toon formulier voor re-authenticatie."""
+        entry = self._get_reauth_entry()
         errors = {}
 
         if user_input is not None:
             try:
-                await validate_input(self.hass, {"school": entry.data["school"], "user": entry.data["user"], "pass": user_input["pass"]})
+                totp_secret = user_input.get("totp_secret") or entry.data.get("totp_secret")
+                await validate_input(self.hass, {
+                    "school": entry.data["school"],
+                    "user": entry.data["user"],
+                    "pass": user_input["pass"],
+                    "totp_secret": totp_secret,
+                })
                 new_data = {**entry.data, "pass": user_input["pass"]}
+                if "totp_secret" in user_input:
+                    new_data["totp_secret"] = user_input["totp_secret"] or None
                 self.hass.config_entries.async_update_entry(entry, data=new_data)
                 await self.hass.config_entries.async_reload(entry.entry_id)
                 return self.async_abort(reason="reauth_successful")
@@ -93,8 +108,11 @@ class MagisterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     errors["base"] = "cannot_connect"
 
         return self.async_show_form(
-            step_id="reauth",
-            data_schema=vol.Schema({vol.Required("pass"): str}),
+            step_id="reauth_confirm",
+            data_schema=vol.Schema({
+                vol.Required("pass"): str,
+                vol.Optional("totp_secret"): str,
+            }),
             errors=errors,
         )
 

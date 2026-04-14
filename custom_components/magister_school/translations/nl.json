@@ -6,13 +6,30 @@
         "description": "Voer je Magister inloggegevens in",
         "data": {
           "school": "School",
-          "user": "Gebruikersnaam", 
-          "pass": "Wachtwoord"
+          "user": "Gebruikersnaam",
+          "pass": "Wachtwoord",
+          "totp_secret": "2FA geheime sleutel (optioneel, alleen bij tweestapsverificatie)"
+        }
+      },
+      "reauth": {
+        "title": "Magister opnieuw inloggen",
+        "description": "Voer je nieuwe wachtwoord in. Laat de 2FA-sleutel leeg om de bestaande instelling te behouden.",
+        "data": {
+          "pass": "Wachtwoord",
+          "totp_secret": "2FA geheime sleutel (optioneel)"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Magister opnieuw inloggen",
+        "description": "Voer je nieuwe wachtwoord in. Laat de 2FA-sleutel leeg om de bestaande instelling te behouden.",
+        "data": {
+          "pass": "Wachtwoord",
+          "totp_secret": "2FA geheime sleutel (optioneel)"
         }
       }
     },
     "error": {
-      "invalid_auth": "Ongeldige inloggegevens",
+      "invalid_auth": "Ongeldige gebruikersnaam, wachtwoord of 2FA-sleutel.",
       "cannot_connect": "Kan geen verbinding maken met Magister",
       "unknown": "Onverwachte fout opgetreden",
       "timeout": "Time-out bij verbinden met Magister"

@@ -13,11 +13,12 @@ class AuthenticationRequired(Exception):
     pass
 
 class MagisterAPI:
-    def __init__(self, school, user, password):
+    def __init__(self, school, user, password, totp_secret=None):
         self.school = school
         self.user = user
         self.password = password
         self.authcode = DEFAULT_AUTHCODE
+        self.totp_secret = totp_secret
 
     def get_data(self):
         script_dir = Path(__file__).resolve().parent
@@ -31,6 +32,9 @@ class MagisterAPI:
             "--authcode", self.authcode
         ]
 
+        if self.totp_secret:
+            cmd += ["--totp-secret", self.totp_secret]
+
         try:
             result = subprocess.run(
                 cmd,
@@ -39,13 +43,15 @@ class MagisterAPI:
                 timeout=30,
                 check=True,
             )
+            if not result.stdout.strip():
+                raise AuthenticationRequired("Login failed: no output from script (wrong credentials or TOTP secret)")
             try:
                 return json.loads(result.stdout)
             except json.JSONDecodeError as e:
                 out = (result.stdout or "") + (result.stderr or "")
                 _LOGGER.error("Ongeldige JSON van Magister script: %s, output: %s", e, out)
                 low = out.lower()
-                if any(tok in low for tok in ["visit website", "redirect url does not contain a fragment", "could not get account info", "requested -> visit website", "change password"]):
+                if any(tok in low for tok in ["visit website", "redirect url does not contain a fragment", "could not get account info", "requested -> visit website", "change password", "totp challenge failed", "softtoken challenge failed", "2fa (totp) is required", "2fa (softtoken) is required"]):
                     raise AuthenticationRequired(out)
                 raise
 
@@ -56,7 +62,7 @@ class MagisterAPI:
             out = (e.stdout or "") + (e.stderr or "")
             _LOGGER.error("Magister script error: %s", out)
             low = out.lower()
-            if any(tok in low for tok in ["visit website", "redirect url does not contain a fragment", "could not get account info", "requested -> visit website", "change password"]):
+            if any(tok in low for tok in ["visit website", "redirect url does not contain a fragment", "could not get account info", "requested -> visit website", "change password", "totp challenge failed", "softtoken challenge failed", "2fa (totp) is required", "2fa (softtoken) is required"]):
                 raise AuthenticationRequired(out)
             raise
         except Exception as e:

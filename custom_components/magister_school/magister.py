@@ -622,7 +622,8 @@ def main():
                 "omschrijving": item.get("Omschrijving", ""),
                 "inhoud": dehtml(item.get("Inhoud", "")),
                 "vak": item.get("Vak", ""),
-                "is_huiswerk": item.get("InfoType", 0) == 1
+                "is_huiswerk": item.get("InfoType", 0) == 1,
+                "is_uitval": item.get("Status") == 5
             }
             for item in afspraken.get("Items", [])
         ]
@@ -648,6 +649,10 @@ def main():
         kind_data["aantal_huiswerk"] = len([
             a for a in kind_data["afspraken"]
             if a["is_huiswerk"]
+        ])
+        kind_data["aantal_uitval"] = len([
+            a for a in kind_data["afspraken"]
+            if a["is_uitval"]
         ])
 
         # Volgende afspraak

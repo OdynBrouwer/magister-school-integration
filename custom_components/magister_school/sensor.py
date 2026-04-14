@@ -86,6 +86,7 @@ class KindOverviewSensor(SensorEntity):
             "wijzigingen": kind_data.get("wijzigingen", []),
             "aantal_afspraken_vandaag": kind_data.get("aantal_afspraken_vandaag", 0),
             "aantal_huiswerk": kind_data.get("aantal_huiswerk", 0),
+            "aantal_uitval": kind_data.get("aantal_uitval", 0),
             "volgende_afspraak": kind_data.get("volgende_afspraak", "Geen"),
             "volgende_vak": kind_data.get("volgende_vak", ""),
         }
@@ -361,10 +362,13 @@ class KindAfsprakenSensor(SensorEntity):
     @property
     def extra_state_attributes(self):
         kind_data = self._get_kind_data()
+        afspraken = kind_data.get("afspraken", []) if kind_data else []
         return {
             "kind_naam": self._kind_naam,
-            "afspraken": kind_data.get("afspraken", []) if kind_data else [],
-            "afspraken_vandaag": kind_data.get("aantal_afspraken_vandaag", 0) if kind_data else 0
+            "afspraken": afspraken,
+            "afspraken_vandaag": kind_data.get("aantal_afspraken_vandaag", 0) if kind_data else 0,
+            "uitval": [a for a in afspraken if a.get("is_uitval")],
+            "aantal_uitval": kind_data.get("aantal_uitval", 0) if kind_data else 0
         }
 
     def _get_kind_data(self):

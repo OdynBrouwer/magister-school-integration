@@ -1,0 +1,5 @@
+export HA_HOST="homeassistant.local"      # SMB hostname or IP
+export HA_URL="http://homeassistant.local:8123"
+export HA_USER="your_smb_username"
+export HA_PASS="your_smb_password"
+export HA_TOKEN="your_long_lived_access_token"

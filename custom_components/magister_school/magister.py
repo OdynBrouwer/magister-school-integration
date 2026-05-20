@@ -693,7 +693,7 @@ def main():
         vandaag = datetime.now().strftime('%Y-%m-%d')
         kind_data["aantal_afspraken_vandaag"] = len([
             a for a in kind_data["afspraken"]
-            if a["start"].startswith(vandaag)
+            if a["start"].startswith(vandaag) and not a["start"].endswith(" 00:00:00")
         ])
         kind_data["aantal_huiswerk"] = len([
             a for a in kind_data["afspraken"]

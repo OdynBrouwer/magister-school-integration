@@ -33,9 +33,14 @@ async def async_setup_entry(
     async_add_entities(sensors, update_before_add=False)
 
 def _get_school_lessen(kind_data):
-    """Return actual school lessons, excluding homework and cancelled items."""
+    """Return actual school lessons, excluding homework, cancelled, and whole-day items."""
     afspraken = kind_data.get("afspraken", []) if kind_data else []
-    return [a for a in afspraken if not a.get("is_huiswerk") and not a.get("is_uitval")]
+    return [
+        a for a in afspraken
+        if not a.get("is_huiswerk")
+        and not a.get("is_uitval")
+        and not a.get("start", "").endswith(" 00:00:00")
+    ]
 
 
 def create_kind_sensors(coordinator, kind_naam):

@@ -356,6 +356,22 @@ class Magister:
         self.logprint("\n---- password ----")
         r = self.httpreq(f"https://{self.magisterserver}/challenges/password", json.dumps(d))
 
+
+        if r.get('action') == "changepassword":
+            print("ERROR Magister wants you to change your password!!")
+            return
+        if r.get('action') == 'pairfidopromo':
+            d = dict(
+                sessionId= sessioninfo["sessionId"][0],  # from redirect
+                returnUrl= sessioninfo["returnUrl"][0],
+                authCode= authcode,
+                reason = "non-user-verifying-platform-authenticator",
+                userVerifyingPlatformAuthenticator = None,
+            )
+
+            r = self.httpreq(f"https://{self.magisterserver}/challenges/skip-pair-fido-promo", json.dumps(d))
+
+
         if not r.get('redirectURL') or r.get('error'):
             if r.get('action'):
                 if not getattr(self.args, "json", False):

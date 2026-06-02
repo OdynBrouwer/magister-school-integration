@@ -1,6 +1,6 @@
 # sensor.py
 import logging
-from datetime import datetime
+from datetime import datetime, time
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -38,6 +38,19 @@ def _get_school_lessen(kind_data):
     return [a for a in afspraken if not a.get("is_huiswerk") and not a.get("is_uitval")]
 
 
+def _parse_school_datetime(value):
+    return datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+
+
+def _non_midnight_lessons(lessen, day):
+    return [
+        lesson
+        for lesson in lessen
+        if _parse_school_datetime(lesson["start"]).date() == day
+        and _parse_school_datetime(lesson["start"]).time() != time(0, 0)
+    ]
+
+
 def create_kind_sensors(coordinator, kind_naam):
     """Maak alle individuele sensors aan voor een kind."""
     base_id = kind_naam.lower().replace(' ', '_')
@@ -64,9 +77,9 @@ def create_kind_sensors(coordinator, kind_naam):
         # Agenda sensors
         KindSchoolStartVandaagSensor(coordinator, kind_naam, base_id),
         KindSchoolEindeVandaagSensor(coordinator, kind_naam, base_id),
-        KindVolgendeScooldagSensor(coordinator, kind_naam, base_id),
-        KindVolgendeScooldagStartSensor(coordinator, kind_naam, base_id),
-        KindVolgendeScooldagEindeSensor(coordinator, kind_naam, base_id),
+        KindVolgendeSchooldagSensor(coordinator, kind_naam, base_id),
+        KindVolgendeSchooldagStartSensor(coordinator, kind_naam, base_id),
+        KindVolgendeSchooldagEindeSensor(coordinator, kind_naam, base_id),
     ]
 
 class KindOverviewSensor(SensorEntity):
@@ -697,10 +710,10 @@ class KindSchoolStartVandaagSensor(SensorEntity):
         kind_data = self._get_kind_data()
         lessen = _get_school_lessen(kind_data)
         vandaag = datetime.now().date()
-        dag_lessen = [l for l in lessen if datetime.strptime(l["start"], "%Y-%m-%d %H:%M:%S").date() == vandaag]
+        dag_lessen = _non_midnight_lessons(lessen, vandaag)
         if not dag_lessen:
             return "Geen"
-        return min(datetime.strptime(l["start"], "%Y-%m-%d %H:%M:%S") for l in dag_lessen).strftime("%H:%M")
+        return min(_parse_school_datetime(l["start"]) for l in dag_lessen).strftime("%H:%M")
 
     @property
     def extra_state_attributes(self):
@@ -743,10 +756,10 @@ class KindSchoolEindeVandaagSensor(SensorEntity):
         kind_data = self._get_kind_data()
         lessen = _get_school_lessen(kind_data)
         vandaag = datetime.now().date()
-        dag_lessen = [l for l in lessen if datetime.strptime(l["start"], "%Y-%m-%d %H:%M:%S").date() == vandaag]
+        dag_lessen = _non_midnight_lessons(lessen, vandaag)
         if not dag_lessen:
             return "Geen"
-        return max(datetime.strptime(l["einde"], "%Y-%m-%d %H:%M:%S") for l in dag_lessen).strftime("%H:%M")
+        return max(_parse_school_datetime(l["einde"]) for l in dag_lessen).strftime("%H:%M")
 
     @property
     def extra_state_attributes(self):
@@ -774,7 +787,7 @@ class KindSchoolEindeVandaagSensor(SensorEntity):
         )
 
 
-class KindVolgendeScooldagSensor(SensorEntity):
+class KindVolgendeSchooldagSensor(SensorEntity):
     """Datum van de eerstvolgende schooldag na vandaag."""
 
     def __init__(self, coordinator, kind_naam, base_id):
@@ -789,9 +802,10 @@ class KindVolgendeScooldagSensor(SensorEntity):
         lessen = _get_school_lessen(kind_data)
         vandaag = datetime.now().date()
         toekomstige_data = {
-            datetime.strptime(l["start"], "%Y-%m-%d %H:%M:%S").date()
+            _parse_school_datetime(l["start"]).date()
             for l in lessen
-            if datetime.strptime(l["start"], "%Y-%m-%d %H:%M:%S").date() > vandaag
+            if _parse_school_datetime(l["start"]).date() > vandaag
+            and _parse_school_datetime(l["start"]).time() != time(0, 0)
         }
         return min(toekomstige_data) if toekomstige_data else None
 
@@ -826,7 +840,7 @@ class KindVolgendeScooldagSensor(SensorEntity):
         )
 
 
-class KindVolgendeScooldagStartSensor(SensorEntity):
+class KindVolgendeSchooldagStartSensor(SensorEntity):
     """Begintijd van de eerste les op de eerstvolgende schooldag."""
 
     def __init__(self, coordinator, kind_naam, base_id):
@@ -842,15 +856,18 @@ class KindVolgendeScooldagStartSensor(SensorEntity):
         lessen = _get_school_lessen(kind_data)
         vandaag = datetime.now().date()
         toekomstige_data = {
-            datetime.strptime(l["start"], "%Y-%m-%d %H:%M:%S").date()
+            _parse_school_datetime(l["start"]).date()
             for l in lessen
-            if datetime.strptime(l["start"], "%Y-%m-%d %H:%M:%S").date() > vandaag
+            if _parse_school_datetime(l["start"]).date() > vandaag
+            and _parse_school_datetime(l["start"]).time() != time(0, 0)
         }
         if not toekomstige_data:
             return "Geen"
         volgende_dag = min(toekomstige_data)
-        dag_lessen = [l for l in lessen if datetime.strptime(l["start"], "%Y-%m-%d %H:%M:%S").date() == volgende_dag]
-        return min(datetime.strptime(l["start"], "%Y-%m-%d %H:%M:%S") for l in dag_lessen).strftime("%H:%M")
+        dag_lessen = _non_midnight_lessons(lessen, volgende_dag)
+        if not dag_lessen:
+            return "Geen"
+        return min(_parse_school_datetime(l["start"]) for l in dag_lessen).strftime("%H:%M")
 
     @property
     def extra_state_attributes(self):
@@ -878,7 +895,7 @@ class KindVolgendeScooldagStartSensor(SensorEntity):
         )
 
 
-class KindVolgendeScooldagEindeSensor(SensorEntity):
+class KindVolgendeSchooldagEindeSensor(SensorEntity):
     """Eindtijd van de laatste les op de eerstvolgende schooldag."""
 
     def __init__(self, coordinator, kind_naam, base_id):
@@ -894,15 +911,18 @@ class KindVolgendeScooldagEindeSensor(SensorEntity):
         lessen = _get_school_lessen(kind_data)
         vandaag = datetime.now().date()
         toekomstige_data = {
-            datetime.strptime(l["start"], "%Y-%m-%d %H:%M:%S").date()
+            _parse_school_datetime(l["start"]).date()
             for l in lessen
-            if datetime.strptime(l["start"], "%Y-%m-%d %H:%M:%S").date() > vandaag
+            if _parse_school_datetime(l["start"]).date() > vandaag
+            and _parse_school_datetime(l["start"]).time() != time(0, 0)
         }
         if not toekomstige_data:
             return "Geen"
         volgende_dag = min(toekomstige_data)
-        dag_lessen = [l for l in lessen if datetime.strptime(l["start"], "%Y-%m-%d %H:%M:%S").date() == volgende_dag]
-        return max(datetime.strptime(l["einde"], "%Y-%m-%d %H:%M:%S") for l in dag_lessen).strftime("%H:%M")
+        dag_lessen = _non_midnight_lessons(lessen, volgende_dag)
+        if not dag_lessen:
+            return "Geen"
+        return max(_parse_school_datetime(l["einde"]) for l in dag_lessen).strftime("%H:%M")
 
     @property
     def extra_state_attributes(self):

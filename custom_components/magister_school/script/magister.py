@@ -10,29 +10,6 @@ import os
 import traceback
 from pathlib import Path
 import argparse
-import hmac
-import hashlib
-import struct
-import time
-import base64
-
-
-def generate_totp(secret: str, digits: int = 6, period: int = 30) -> str:
-    """Generate a TOTP code from a base32-encoded secret."""
-    # Normalize: remove spaces, dashes, uppercase, strip padding
-    secret_clean = secret.upper().replace(' ', '').replace('-', '').rstrip('=')
-    # Only keep valid base32 characters
-    secret_clean = ''.join(c for c in secret_clean if c in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567')
-    # Add padding if needed
-    padding = (8 - len(secret_clean) % 8) % 8
-    secret_bytes = base64.b32decode(secret_clean + '=' * padding, casefold=True)
-    counter = int(time.time()) // period
-    counter_bytes = struct.pack('>Q', counter)
-    h = hmac.new(secret_bytes, counter_bytes, hashlib.sha1).digest()
-    offset = h[-1] & 0x0F
-    code = struct.unpack('>I', h[offset:offset + 4])[0] & 0x7FFFFFFF
-    return str(code % (10 ** digits)).zfill(digits)
-
 
 def dehtml(html):
     """
@@ -99,17 +76,65 @@ def deltaymd(years=0, days=0, weeks=0):
         t += timedelta(weeks=weeks)
     return "%04d-%02d-%02d" % (t.year, t.month, t.day)
 
-def infotstr(t):
-    typenames = ["", "hw", "T!", "TT", "SO", "MO", "in", "aa"]
-    if isinstance(t, int) and 0 <= t < len(typenames):
-        return typenames[t]
+AFSPRAAK_TYPE = {
+    0: "",
+    1: "Persoonlijk",
+    2: "Algemeen",
+    3: "Schoolbreed",
+    4: "Stage",
+    5: "Intake",
+    6: "Roostervrij",
+    7: "Kwt",
+    8: "Standby",
+    9: "Blokkade",
+    10: "Overig",
+    11: "Blokkade Lokaal",
+    12: "Blokkade Klas",
+    13: "Les",
+    14: "Studiehuis",
+    15: "Roostervrije Studie",
+    16: "Planning",
+    101: "Maatregelen",
+    102: "Presenties",
+    103: "ExamenRooster",
+}
+
+AFSPRAAK_STATUS = {
+    0: "",
+    1: "Geroosterd Automatisch",
+    2: "Geroosterd Handmatig",
+    3: "Gewijzigd",
+    4: "Vervallen Handmatig",
+    5: "Vervallen Automatisch",
+    6: "In Gebruik",
+    7: "Afgesloten",
+    8: "Ingezet",
+    9: "Verplaatst",
+    10: "Gewijzigd en Verplaatst",
+}
+
+AFSPRAAK_INFO_TYPE = {
+    0: "",
+    1: "Huiswerk",
+    2: "Proefwerk",
+    3: "Tentamen",
+    4: "Schriftelijke Overhoring",
+    5: "Mondelinge Overhoring",
+    6: "Informatie",
+    7: "Aantekening",
+}
+
+def infotstr(t, typenames):
+    if not isinstance(typenames, dict):
+        return "??"
+
     try:
-        it = int(t)
-        if 0 <= it < len(typenames):
-            return typenames[it]
-    except Exception:
-        pass
-    return "??"
+        i = int(t)
+    except (TypeError, ValueError):
+        return "??"
+
+    return typenames.get(i, "??")
+
 
 class Magister:
     """
@@ -331,39 +356,30 @@ class Magister:
         self.logprint("\n---- password ----")
         r = self.httpreq(f"https://{self.magisterserver}/challenges/password", json.dumps(d))
 
-        # Handle 2FA challenge after password
+
+        if r.get('action') == "changepassword":
+            print("ERROR Magister wants you to change your password!!")
+            return
+        if r.get('action') == 'pairfidopromo':
+            d = dict(
+                sessionId= sessioninfo["sessionId"][0],  # from redirect
+                returnUrl= sessioninfo["returnUrl"][0],
+                authCode= authcode,
+                reason = "non-user-verifying-platform-authenticator",
+                userVerifyingPlatformAuthenticator = None,
+            )
+
+            r = self.httpreq(f"https://{self.magisterserver}/challenges/skip-pair-fido-promo", json.dumps(d))
+
+
         if not r.get('redirectURL') or r.get('error'):
-            action = r.get('action', '')
-            if action in ('totp', 'softtoken'):
-                self.logprint(f"\n---- {action} ----")
-                totp_secret = getattr(self.args, 'totp_secret', None)
-                if not totp_secret:
-                    if not getattr(self.args, "json", False):
-                        print(f"2FA ({action}) is required but no totp_secret was provided")
-                    return False
-                otp_code = generate_totp(totp_secret)
-                if self.args.verbose and not getattr(self.args, "json", False):
-                    print(f"-> Generated OTP code: {otp_code}")
-                otp_payload = dict(d)
-                if action == "softtoken":
-                    otp_payload["code"] = otp_code
-                    endpoint = "soft-token"
-                else:
-                    otp_payload["otp"] = otp_code
-                    endpoint = action
-                r = self.httpreq(f"https://{self.magisterserver}/challenges/{endpoint}", json.dumps(otp_payload))
-                if not r.get('redirectURL') or r.get('error'):
-                    if not getattr(self.args, "json", False):
-                        print(f"{action} challenge failed: '{r.get('error', 'no redirectURL')}'")
-                    return False
-            elif action:
+            if r.get('action'):
                 if not getattr(self.args, "json", False):
-                    print("'%s' requested -> visit website" % action)
+                    print("'%s' requested -> visit website" % r['action'])
                 return False
-            else:
-                if not getattr(self.args, "json", False):
-                    print("ERROR '%s'" % r.get('error'))
-                return False
+            if not getattr(self.args, "json", False):
+                print("ERROR '%s'" % r.get('error'))
+            return False
 
         self.logprint("\n---- callback ----")
         url, html = self.httpredirurl(f"https://{self.magisterserver}" + r["redirectURL"])
@@ -492,7 +508,7 @@ def safe_datum_field(item, *keys):
         if v:
             return datum(v)
     return "?"
-    
+
 def main():
     parser = argparse.ArgumentParser(description='Magister info dump')
     parser.add_argument('--debug', '-d', action='store_true', help=argparse.SUPPRESS)
@@ -507,7 +523,6 @@ def main():
     parser.add_argument('--username', help=argparse.SUPPRESS)
     parser.add_argument('--password', help=argparse.SUPPRESS)
     parser.add_argument("--authcode", help=argparse.SUPPRESS)
-    parser.add_argument('--totp-secret', dest='totp_secret', default=None, help=argparse.SUPPRESS)
     parser.add_argument('--schoolserver', help=argparse.SUPPRESS)
     parser.add_argument('--magisterserver', default='accounts.magister.net', help=argparse.SUPPRESS)
     args = parser.parse_args()
@@ -539,7 +554,7 @@ def main():
             safe_school = args.schoolserver.replace('.', '_').replace('@', '_').replace('/', '_')
             safe_user = args.username.replace('.', '_').replace('@', '_').replace('/', '_')
             cache_suffix = f"_{safe_school}_{safe_user}"
-        
+
         cache_name = f".magister_auth_cache{cache_suffix}"
         local_cache = script_dir / cache_name
         args.cache = local_cache if local_cache.exists() else Path.home() / cache_name
@@ -580,15 +595,15 @@ def main():
     }
 
     d = mg.req("account")
-    
+
     # Check if account request was successful
     if not isinstance(d, dict) or "Persoon" not in d:
         if not args.json:
             print(f"ERROR: Could not get account info. Response: {d}")
         sys.exit(1)
-    
+
     ouderid = d["Persoon"]["Id"]
-    
+
     # Try to get children - will fail for student accounts
     try:
         k = mg.req("personen", ouderid, "kinderen")
@@ -666,13 +681,17 @@ def main():
             {
                 "start": datum(item.get("Start") or item.get("Datum")),
                 "einde": datum(item.get("Einde") or item.get("Eind")),
-                "type": infotstr(item.get("InfoType", 0)),
-                "lokaal": item.get("Lokatie", ""),
+                "status": infotstr(item.get("Status", 0), AFSPRAAK_STATUS),
+                "soort": infotstr(item.get("Type", 0), AFSPRAAK_TYPE),
+                "type": infotstr(item.get("InfoType", 0), AFSPRAAK_INFO_TYPE),
+                "lokaal": ", ".join(filter(None, [item.get("Lokatie")] + [l.get("Naam") for l in (item.get("Lokalen") or [])])),
                 "omschrijving": item.get("Omschrijving", ""),
                 "inhoud": dehtml(item.get("Inhoud", "")),
-                "vak": item.get("Vak", ""),
+                "vak": ", ".join(filter(None, ([item.get("Vak", {}).get("Naam")] if item.get("Vak") else []) + [v.get("Naam") for v in (item.get("Vakken") or [])])),
+                "docent": ", ".join(filter(None, ([item.get("Docent", {}).get("Naam")] if item.get("Docent") else []) + [d.get("Naam") for d in (item.get("Docenten") or [])])),
                 "is_huiswerk": item.get("InfoType", 0) == 1,
-                "is_uitval": item.get("Status") == 5
+                "lesuurstart": item.get("LesuurVan"),
+                "lesuureinde": item.get("LesuurTotMet"),
             }
             for item in afspraken.get("Items", [])
         ]
@@ -681,10 +700,17 @@ def main():
             {
                 "start": safe_datum_field(item, "Start", "Datum"),
                 "einde": safe_datum_field(item, "Eind", "Einde"),
-                "type": infotstr(item.get("InfoType", 0)),
+                "status": infotstr(item.get("Status", 0), AFSPRAAK_STATUS),
+                "soort": infotstr(item.get("Type", 0), AFSPRAAK_TYPE),
+                "type": infotstr(item.get("InfoType", 0), AFSPRAAK_INFO_TYPE),
                 "lokaal": item.get("Lokatie", ""),
                 "omschrijving": item.get("Omschrijving", ""),
-                "inhoud": dehtml(item.get("Inhoud", ""))
+                "inhoud": dehtml(item.get("Inhoud", "")),
+                "vak": ", ".join(filter(None, ([item.get("Vak", {}).get("Naam")] if item.get("Vak") else []) + [v.get("Naam") for v in (item.get("Vakken") or [])])),
+                "docent": ", ".join(filter(None, ([item.get("Docent", {}).get("Naam")] if item.get("Docent") else []) + [d.get("Naam") for d in (item.get("Docenten") or [])])),
+                "is_huiswerk": item.get("InfoType", 0) == 1,
+                "lesuurstart": item.get("LesuurVan"),
+                "lesuureinde": item.get("LesuurTotMet"),
             }
             for item in wijzigingen.get("Items", [])
         ]
@@ -698,10 +724,6 @@ def main():
         kind_data["aantal_huiswerk"] = len([
             a for a in kind_data["afspraken"]
             if a["is_huiswerk"]
-        ])
-        kind_data["aantal_uitval"] = len([
-            a for a in kind_data["afspraken"]
-            if a["is_uitval"]
         ])
 
         # Volgende afspraak

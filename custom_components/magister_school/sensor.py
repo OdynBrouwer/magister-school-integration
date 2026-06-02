@@ -1,5 +1,6 @@
 # sensor.py
 import logging
+from datetime import datetime
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -31,19 +32,25 @@ async def async_setup_entry(
     
     async_add_entities(sensors, update_before_add=False)
 
+def _get_school_lessen(kind_data):
+    """Return actual school lessons, excluding homework and cancelled items."""
+    afspraken = kind_data.get("afspraken", []) if kind_data else []
+    return [a for a in afspraken if not a.get("is_huiswerk") and not a.get("is_uitval")]
+
+
 def create_kind_sensors(coordinator, kind_naam):
     """Maak alle individuele sensors aan voor een kind."""
     base_id = kind_naam.lower().replace(' ', '_')
-    
+
     return [
         # Overview sensor voor templates (deze moet erbij!)
         KindOverviewSensor(coordinator, kind_naam, base_id),
-        
+
         # Basis info sensors
         KindAantalAfsprakenSensor(coordinator, kind_naam, base_id),
         KindAantalHuiswerkSensor(coordinator, kind_naam, base_id),
         KindVolgendeAfspraakSensor(coordinator, kind_naam, base_id),
-        
+
         # Detail sensors
         KindCijfersSensor(coordinator, kind_naam, base_id),
         KindAfsprakenSensor(coordinator, kind_naam, base_id),
@@ -53,6 +60,13 @@ def create_kind_sensors(coordinator, kind_naam):
         KindStudiewijzersSensor(coordinator, kind_naam, base_id),
         KindActiviteitenSensor(coordinator, kind_naam, base_id),
         KindAanmeldingenSensor(coordinator, kind_naam, base_id),
+
+        # Agenda sensors
+        KindSchoolStartVandaagSensor(coordinator, kind_naam, base_id),
+        KindSchoolEindeVandaagSensor(coordinator, kind_naam, base_id),
+        KindVolgendeScooldagSensor(coordinator, kind_naam, base_id),
+        KindVolgendeScooldagStartSensor(coordinator, kind_naam, base_id),
+        KindVolgendeScooldagEindeSensor(coordinator, kind_naam, base_id),
     ]
 
 class KindOverviewSensor(SensorEntity):
@@ -623,7 +637,7 @@ class KindActiviteitenSensor(SensorEntity):
 
 class KindAanmeldingenSensor(SensorEntity):
     """Sensor voor aanmeldingen."""
-    
+
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
         self._kind_naam = kind_naam
@@ -644,6 +658,255 @@ class KindAanmeldingenSensor(SensorEntity):
             "kind_naam": self._kind_naam,
             "aanmeldingen": kind_data.get("aanmeldingen", []) if kind_data else []
         }
+
+    def _get_kind_data(self):
+        if not self._coordinator.data:
+            return None
+        return self._coordinator.data.get("kinderen", {}).get(self._kind_naam)
+
+    @property
+    def should_poll(self):
+        return False
+
+    @property
+    def available(self):
+        return self._coordinator.last_update_success and self._get_kind_data() is not None
+
+    async def async_update(self):
+        await self._coordinator.async_request_refresh()
+
+    async def async_added_to_hass(self):
+        self.async_on_remove(
+            self._coordinator.async_add_listener(self.async_write_ha_state)
+        )
+
+
+# Agenda sensors
+class KindSchoolStartVandaagSensor(SensorEntity):
+    """Begintijd van de eerste les vandaag."""
+
+    def __init__(self, coordinator, kind_naam, base_id):
+        self._coordinator = coordinator
+        self._kind_naam = kind_naam
+        self._attr_unique_id = f"magister_{base_id}_school_start_vandaag"
+        self._attr_name = f"Magister {kind_naam} School Start Vandaag"
+        self._attr_icon = "mdi:clock-start"
+
+    @property
+    def state(self):
+        kind_data = self._get_kind_data()
+        lessen = _get_school_lessen(kind_data)
+        vandaag = datetime.now().date()
+        dag_lessen = [l for l in lessen if datetime.strptime(l["start"], "%Y-%m-%d %H:%M:%S").date() == vandaag]
+        if not dag_lessen:
+            return "Geen"
+        return min(datetime.strptime(l["start"], "%Y-%m-%d %H:%M:%S") for l in dag_lessen).strftime("%H:%M")
+
+    @property
+    def extra_state_attributes(self):
+        return {"kind_naam": self._kind_naam}
+
+    def _get_kind_data(self):
+        if not self._coordinator.data:
+            return None
+        return self._coordinator.data.get("kinderen", {}).get(self._kind_naam)
+
+    @property
+    def should_poll(self):
+        return False
+
+    @property
+    def available(self):
+        return self._coordinator.last_update_success and self._get_kind_data() is not None
+
+    async def async_update(self):
+        await self._coordinator.async_request_refresh()
+
+    async def async_added_to_hass(self):
+        self.async_on_remove(
+            self._coordinator.async_add_listener(self.async_write_ha_state)
+        )
+
+
+class KindSchoolEindeVandaagSensor(SensorEntity):
+    """Eindtijd van de laatste les vandaag."""
+
+    def __init__(self, coordinator, kind_naam, base_id):
+        self._coordinator = coordinator
+        self._kind_naam = kind_naam
+        self._attr_unique_id = f"magister_{base_id}_school_einde_vandaag"
+        self._attr_name = f"Magister {kind_naam} School Einde Vandaag"
+        self._attr_icon = "mdi:clock-end"
+
+    @property
+    def state(self):
+        kind_data = self._get_kind_data()
+        lessen = _get_school_lessen(kind_data)
+        vandaag = datetime.now().date()
+        dag_lessen = [l for l in lessen if datetime.strptime(l["start"], "%Y-%m-%d %H:%M:%S").date() == vandaag]
+        if not dag_lessen:
+            return "Geen"
+        return max(datetime.strptime(l["einde"], "%Y-%m-%d %H:%M:%S") for l in dag_lessen).strftime("%H:%M")
+
+    @property
+    def extra_state_attributes(self):
+        return {"kind_naam": self._kind_naam}
+
+    def _get_kind_data(self):
+        if not self._coordinator.data:
+            return None
+        return self._coordinator.data.get("kinderen", {}).get(self._kind_naam)
+
+    @property
+    def should_poll(self):
+        return False
+
+    @property
+    def available(self):
+        return self._coordinator.last_update_success and self._get_kind_data() is not None
+
+    async def async_update(self):
+        await self._coordinator.async_request_refresh()
+
+    async def async_added_to_hass(self):
+        self.async_on_remove(
+            self._coordinator.async_add_listener(self.async_write_ha_state)
+        )
+
+
+class KindVolgendeScooldagSensor(SensorEntity):
+    """Datum van de eerstvolgende schooldag na vandaag."""
+
+    def __init__(self, coordinator, kind_naam, base_id):
+        self._coordinator = coordinator
+        self._kind_naam = kind_naam
+        self._attr_unique_id = f"magister_{base_id}_volgende_schooldag"
+        self._attr_name = f"Magister {kind_naam} Volgende Schooldag"
+        self._attr_icon = "mdi:calendar-arrow-right"
+
+    def _volgende_dag(self):
+        kind_data = self._get_kind_data()
+        lessen = _get_school_lessen(kind_data)
+        vandaag = datetime.now().date()
+        toekomstige_data = {
+            datetime.strptime(l["start"], "%Y-%m-%d %H:%M:%S").date()
+            for l in lessen
+            if datetime.strptime(l["start"], "%Y-%m-%d %H:%M:%S").date() > vandaag
+        }
+        return min(toekomstige_data) if toekomstige_data else None
+
+    @property
+    def state(self):
+        dag = self._volgende_dag()
+        return dag.strftime("%Y-%m-%d") if dag else "Geen"
+
+    @property
+    def extra_state_attributes(self):
+        return {"kind_naam": self._kind_naam}
+
+    def _get_kind_data(self):
+        if not self._coordinator.data:
+            return None
+        return self._coordinator.data.get("kinderen", {}).get(self._kind_naam)
+
+    @property
+    def should_poll(self):
+        return False
+
+    @property
+    def available(self):
+        return self._coordinator.last_update_success and self._get_kind_data() is not None
+
+    async def async_update(self):
+        await self._coordinator.async_request_refresh()
+
+    async def async_added_to_hass(self):
+        self.async_on_remove(
+            self._coordinator.async_add_listener(self.async_write_ha_state)
+        )
+
+
+class KindVolgendeScooldagStartSensor(SensorEntity):
+    """Begintijd van de eerste les op de eerstvolgende schooldag."""
+
+    def __init__(self, coordinator, kind_naam, base_id):
+        self._coordinator = coordinator
+        self._kind_naam = kind_naam
+        self._attr_unique_id = f"magister_{base_id}_volgende_schooldag_start"
+        self._attr_name = f"Magister {kind_naam} Volgende Schooldag Start"
+        self._attr_icon = "mdi:clock-start"
+
+    @property
+    def state(self):
+        kind_data = self._get_kind_data()
+        lessen = _get_school_lessen(kind_data)
+        vandaag = datetime.now().date()
+        toekomstige_data = {
+            datetime.strptime(l["start"], "%Y-%m-%d %H:%M:%S").date()
+            for l in lessen
+            if datetime.strptime(l["start"], "%Y-%m-%d %H:%M:%S").date() > vandaag
+        }
+        if not toekomstige_data:
+            return "Geen"
+        volgende_dag = min(toekomstige_data)
+        dag_lessen = [l for l in lessen if datetime.strptime(l["start"], "%Y-%m-%d %H:%M:%S").date() == volgende_dag]
+        return min(datetime.strptime(l["start"], "%Y-%m-%d %H:%M:%S") for l in dag_lessen).strftime("%H:%M")
+
+    @property
+    def extra_state_attributes(self):
+        return {"kind_naam": self._kind_naam}
+
+    def _get_kind_data(self):
+        if not self._coordinator.data:
+            return None
+        return self._coordinator.data.get("kinderen", {}).get(self._kind_naam)
+
+    @property
+    def should_poll(self):
+        return False
+
+    @property
+    def available(self):
+        return self._coordinator.last_update_success and self._get_kind_data() is not None
+
+    async def async_update(self):
+        await self._coordinator.async_request_refresh()
+
+    async def async_added_to_hass(self):
+        self.async_on_remove(
+            self._coordinator.async_add_listener(self.async_write_ha_state)
+        )
+
+
+class KindVolgendeScooldagEindeSensor(SensorEntity):
+    """Eindtijd van de laatste les op de eerstvolgende schooldag."""
+
+    def __init__(self, coordinator, kind_naam, base_id):
+        self._coordinator = coordinator
+        self._kind_naam = kind_naam
+        self._attr_unique_id = f"magister_{base_id}_volgende_schooldag_einde"
+        self._attr_name = f"Magister {kind_naam} Volgende Schooldag Einde"
+        self._attr_icon = "mdi:clock-end"
+
+    @property
+    def state(self):
+        kind_data = self._get_kind_data()
+        lessen = _get_school_lessen(kind_data)
+        vandaag = datetime.now().date()
+        toekomstige_data = {
+            datetime.strptime(l["start"], "%Y-%m-%d %H:%M:%S").date()
+            for l in lessen
+            if datetime.strptime(l["start"], "%Y-%m-%d %H:%M:%S").date() > vandaag
+        }
+        if not toekomstige_data:
+            return "Geen"
+        volgende_dag = min(toekomstige_data)
+        dag_lessen = [l for l in lessen if datetime.strptime(l["start"], "%Y-%m-%d %H:%M:%S").date() == volgende_dag]
+        return max(datetime.strptime(l["einde"], "%Y-%m-%d %H:%M:%S") for l in dag_lessen).strftime("%H:%M")
+
+    @property
+    def extra_state_attributes(self):
+        return {"kind_naam": self._kind_naam}
 
     def _get_kind_data(self):
         if not self._coordinator.data:

@@ -97,6 +97,62 @@ class KindOverviewSensor(SensorEntity):
         kind_data = self._get_kind_data()
         return kind_data.get("aantal_afspraken_vandaag", 0) if kind_data else 0
 
+    def _compute_agenda_attrs(self, kind_data):
+        """Compute agenda/schooltime attributes from kind data."""
+        import logging
+        _LOGGER = logging.getLogger(__name__)
+
+        lessen = _get_school_lessen(kind_data)
+        vandaag = datetime.now().date()
+        dag_lessen = _non_midnight_lessons(lessen, vandaag)
+
+        # School start/einde vandaag
+        if dag_lessen:
+            school_start = min(_parse_school_datetime(l["start"]) for l in dag_lessen)
+            school_einde = max(_parse_school_datetime(l["einde"]) for l in dag_lessen)
+        else:
+            school_start = school_einde = None
+
+        # Volgende schooldag
+        toekomstige_data = sorted({
+            _parse_school_datetime(l["start"]).date()
+            for l in lessen
+            if _parse_school_datetime(l["start"]).date() > vandaag
+            and _parse_school_datetime(l["start"]).time() != time(0, 0)
+        })
+        volgende_dag = toekomstige_data[0] if toekomstige_data else None
+
+        # Start/einde op volgende schooldag
+        if volgende_dag:
+            volgende_lessen = _non_midnight_lessons(lessen, volgende_dag)
+            if volgende_lessen:
+                v_start = min(_parse_school_datetime(l["start"]) for l in volgende_lessen)
+                v_einde = max(_parse_school_datetime(l["einde"]) for l in volgende_lessen)
+            else:
+                v_start = v_einde = None
+        else:
+            v_start = v_einde = None
+
+        return {
+            "school_start_vandaag": school_start.strftime("%H:%M") if school_start else "Geen",
+            "school_einde_vandaag": school_einde.strftime("%H:%M") if school_einde else "Geen",
+            "volgende_schooldag": volgende_dag.strftime("%Y-%m-%d") if volgende_dag else "Geen",
+            "volgende_schooldag_start": v_start.strftime("%H:%M") if v_start else "Geen",
+            "volgende_schooldag_einde": v_einde.strftime("%H:%M") if v_einde else "Geen",
+            # Volledige lessenlijst vandaag (exclusief midnight) voor de card
+            "lessen_vandaag": [
+                {
+                    "start": _parse_school_datetime(l["start"]).strftime("%H:%M"),
+                    "einde": _parse_school_datetime(l["einde"]).strftime("%H:%M"),
+                    "vak": l.get("vak", ""),
+                    "omschrijving": l.get("omschrijving", ""),
+                    "lokaal": l.get("lokaal", ""),
+                    "is_huiswerk": l.get("is_huiswerk", False),
+                }
+                for l in sorted(dag_lessen, key=lambda x: _parse_school_datetime(x["start"]))
+            ],
+        }
+
     @property
     def extra_state_attributes(self):
         """Return ALLE data voor templates."""
@@ -117,6 +173,12 @@ class KindOverviewSensor(SensorEntity):
             "volgende_afspraak": kind_data.get("volgende_afspraak", "Geen"),
             "volgende_vak": kind_data.get("volgende_vak", ""),
         }
+
+        # Voeg agenda-attributen toe
+        try:
+            attributes.update(self._compute_agenda_attrs(kind_data))
+        except Exception:
+            pass
 
         # Voeg extra data toe
         for data_type in ["cijfers", "opdrachten", "absenties", "studiewijzers", "activiteiten"]:

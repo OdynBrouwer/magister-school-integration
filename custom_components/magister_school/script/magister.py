@@ -690,6 +690,7 @@ def main():
                 "vak": ", ".join(filter(None, ([item.get("Vak", {}).get("Naam")] if item.get("Vak") else []) + [v.get("Naam") for v in (item.get("Vakken") or [])])),
                 "docent": ", ".join(filter(None, ([item.get("Docent", {}).get("Naam")] if item.get("Docent") else []) + [d.get("Naam") for d in (item.get("Docenten") or [])])),
                 "is_huiswerk": item.get("InfoType", 0) == 1,
+                "is_uitval": "Vervallen" in (infotstr(item.get("Status", 0), AFSPRAAK_STATUS)),
                 "lesuurstart": item.get("LesuurVan"),
                 "lesuureinde": item.get("LesuurTotMet"),
             }
@@ -709,6 +710,7 @@ def main():
                 "vak": ", ".join(filter(None, ([item.get("Vak", {}).get("Naam")] if item.get("Vak") else []) + [v.get("Naam") for v in (item.get("Vakken") or [])])),
                 "docent": ", ".join(filter(None, ([item.get("Docent", {}).get("Naam")] if item.get("Docent") else []) + [d.get("Naam") for d in (item.get("Docenten") or [])])),
                 "is_huiswerk": item.get("InfoType", 0) == 1,
+                "is_uitval": "Vervallen" in (infotstr(item.get("Status", 0), AFSPRAAK_STATUS)),
                 "lesuurstart": item.get("LesuurVan"),
                 "lesuureinde": item.get("LesuurTotMet"),
             }

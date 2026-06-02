@@ -1,29 +1,24 @@
 # Release v1.0.8
 
-## Dutch (Nederlands)
+## GitHub release text
 
-**Versie 1.0.8** —  Fixed re-auth handling and convenience features.
+Magister School Integration v1.0.8 adds agenda calendar support, improved appointment handling, and five new agenda sensors per child.
 
-Wat is er nieuw?
-- 🔄 Re-authenticatie & meldingen
-  - Detectie wanneer Magister een wachtwoordwijziging of extra authenticatie vereist.
-  - Home Assistant toont nu een persistente melding: "Mogelijk nieuw wachtwoord nodig voor Magister."
-  - Re-auth flow toegevoegd zodat je direct een nieuw wachtwoord kunt invoeren zonder de integratie te verwijderen.
-- 🔧 Overige fixes
-  - `.gitignore` toegevoegd (o.a. `venv/` en `test_output.txt`) om tijdelijke bestanden te negeren.
+### Highlights
 
-## English
+- Added the agenda calendar from PR 9.
+- Improved appointment and schedule data handling from PR 10.
+- Added five agenda sensors per child from PR 17.
+- Renamed the agenda sensor classes for consistency.
+- Ignored all-day/midnight items so the sensors show real times instead of `00:00`.
 
-**Version 1.0.8** — Re-auth improvements and small fixes.
+## HACS update text
 
-What's new?
-- 🔄 Re-auth & notifications
-  - Detect when Magister asks for a password change or extra authentication.
-  - A persistent notification will appear in Home Assistant: "Possible new password required for Magister."
-  - Added a re-auth flow so you can enter a new password without removing the integration.
-- 🔧 Other fixes
-  - Added `.gitignore` (e.g. `venv/`, `test_output.txt`).
+This release adds agenda calendar support, better appointment handling, and five new agenda sensors per child. It also fixes the agenda sensor naming and filters out all-day/midnight items so the sensor states show correct times.
 
----
+## PR summary
 
-If you want, I can also create the GitHub release tag and upload these notes to the release description.
+- **PR 9**: agenda calendar support via `calendar.py`.
+- **PR 10**: improved `script/magister.py` data handling.
+- **PR 17**: five new agenda sensors per child.
+- **Fix**: class names corrected to `Schooldag`; entity IDs stayed unchanged.

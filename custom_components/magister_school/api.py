@@ -8,11 +8,16 @@ _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_AUTHCODE = "00000000000000000000000000000000"
 
+
+class AuthenticationRequired(Exception):
+    """Raised when Magister requires re-authentication (invalid password / 2FA)."""
+
 class MagisterAPI:
-    def __init__(self, school, user, password):
+    def __init__(self, school, user, password, totp_secret: str = None):
         self.school = school
         self.user = user
         self.password = password
+        self.totp_secret = totp_secret
         self.authcode = DEFAULT_AUTHCODE
 
     def get_data(self):

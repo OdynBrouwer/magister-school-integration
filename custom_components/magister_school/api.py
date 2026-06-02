@@ -8,21 +8,16 @@ _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_AUTHCODE = "00000000000000000000000000000000"
 
-class AuthenticationRequired(Exception):
-    """Raised when Magister requires re-authentication (e.g. password change)."""
-    pass
-
 class MagisterAPI:
-    def __init__(self, school, user, password, totp_secret=None):
+    def __init__(self, school, user, password):
         self.school = school
         self.user = user
         self.password = password
         self.authcode = DEFAULT_AUTHCODE
-        self.totp_secret = totp_secret
 
     def get_data(self):
         script_dir = Path(__file__).resolve().parent
-        script_path = str(script_dir) + "/magister.py"
+        script_path = str(script_dir) + "/script/magister.py"
         cmd = [
             "python3", script_path,
             "--json",
@@ -32,38 +27,24 @@ class MagisterAPI:
             "--authcode", self.authcode
         ]
 
-        if self.totp_secret:
-            cmd += ["--totp-secret", self.totp_secret]
-
         try:
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
                 timeout=30,
-                check=True,
+                check=True
             )
-            if not result.stdout.strip():
-                raise AuthenticationRequired("Login failed: no output from script (wrong credentials or TOTP secret)")
-            try:
-                return json.loads(result.stdout)
-            except json.JSONDecodeError as e:
-                out = (result.stdout or "") + (result.stderr or "")
-                _LOGGER.error("Ongeldige JSON van Magister script: %s, output: %s", e, out)
-                low = out.lower()
-                if any(tok in low for tok in ["visit website", "redirect url does not contain a fragment", "could not get account info", "requested -> visit website", "change password", "totp challenge failed", "softtoken challenge failed", "2fa (totp) is required", "2fa (softtoken) is required"]):
-                    raise AuthenticationRequired(out)
-                raise
+            return json.loads(result.stdout)
 
         except subprocess.TimeoutExpired:
             _LOGGER.error("Magister script timeout")
             raise
         except subprocess.CalledProcessError as e:
-            out = (e.stdout or "") + (e.stderr or "")
-            _LOGGER.error("Magister script error: %s", out)
-            low = out.lower()
-            if any(tok in low for tok in ["visit website", "redirect url does not contain a fragment", "could not get account info", "requested -> visit website", "change password", "totp challenge failed", "softtoken challenge failed", "2fa (totp) is required", "2fa (softtoken) is required"]):
-                raise AuthenticationRequired(out)
+            _LOGGER.error("Magister script error: %s", e.stderr)
+            raise
+        except json.JSONDecodeError as e:
+            _LOGGER.error("Ongeldige JSON van Magister script: %s", e)
             raise
         except Exception as e:
             _LOGGER.error("Onverwachte fout: %s", e)

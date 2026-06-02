@@ -1,8 +1,8 @@
-# Release v1.0.8
+# Release v2.0.0
 
 ## GitHub release text
 
-Magister School Integration v1.0.8 adds agenda calendar support, improved appointment handling, and five new agenda sensors per child.
+Magister School Integration v2.0.0 adds agenda calendar support, improved appointment handling, and five new agenda sensors per child.
 
 ### Highlights
 

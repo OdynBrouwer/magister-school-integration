@@ -33,9 +33,15 @@ async def async_setup_entry(
     async_add_entities(sensors, update_before_add=False)
 
 def _get_school_lessen(kind_data):
-    """Return actual school lessons, excluding homework and cancelled items."""
+    """Return actual school lessons (soort 'Les'), excluding cancelled items.
+
+    Filter on ``soort`` rather than ``is_huiswerk``: a lesson that has homework
+    attached (InfoType 1) is still a real lesson, and using ``is_huiswerk`` would
+    wrongly drop it. This also excludes non-lesson items like all-day notices and
+    "Inloopspreekuur" (soort "Algemeen") from school start/end times.
+    """
     afspraken = kind_data.get("afspraken", []) if kind_data else []
-    return [a for a in afspraken if not a.get("is_huiswerk") and not a.get("is_uitval")]
+    return [a for a in afspraken if a.get("soort") == "Les" and not a.get("is_uitval")]
 
 
 def _parse_school_datetime(value):

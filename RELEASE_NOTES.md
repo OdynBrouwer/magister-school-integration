@@ -1,4 +1,19 @@
-# Release v2.0.1
+# Release v2.0.2
+
+## GitHub release text
+
+Magister School Integration v2.0.2 improves error handling when the Magister subprocess times out.
+
+### Fixes
+
+- Prevented subprocess timeout exceptions from exposing the full command line, including credentials, in Home Assistant logs.
+- Kept the existing Magister and 2FA login flow unchanged.
+
+## HACS update text
+
+This release improves timeout error handling so credentials are not included in the resulting Home Assistant log message.
+
+## Previous release: v2.0.1
 
 ## GitHub release text
 

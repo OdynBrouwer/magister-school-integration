@@ -44,7 +44,7 @@ class MagisterAPI:
 
         except subprocess.TimeoutExpired:
             _LOGGER.error("Magister script timeout")
-            raise
+            raise TimeoutError("Magister script timeout") from None
         except subprocess.CalledProcessError as e:
             _LOGGER.error("Magister script error: %s", e.stderr)
             raise

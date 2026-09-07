@@ -1,0 +1,15 @@
+# Normalize line endings for all text files
+* text=auto
+
+# Explicit text file types
+*.py text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.gz binary

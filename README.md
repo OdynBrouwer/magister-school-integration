@@ -155,7 +155,22 @@ Bijdragen zijn welkom! Voel je vrij om:
 - Pull requests in te dienen voor verbeteringen
 - De documentatie te verbeteren
 
-## 🗃️ Database Optimalisatie
+## �️ Ontwikkeling & HACS-standaarden
+
+De repository volgt de HACS- en Home Assistant-validatieprocessen:
+
+- **GitHub Actions** voert bij elke push en pull request automatisch de
+  HACS- en hassfest-validatie uit (`.github/workflows/validate.yml`).
+- **pre-commit** bevat handige lokale checks. Installeer dit optioneel met:
+  `pip install pre-commit && pre-commit install`
+- **Ruff** is ingesteld met een gematigde, veilige regelselectie (zie
+  `.ruff.toml`) om bestaande code niet onnodig te herschrijven.
+
+Voor indiening in de **HACS-defaultstore** is nog nodig:
+- `logo.png` en `icon.png` in een `brand/`-map
+- Een formele HACS-aanvraag via de HACS-documentatie
+
+## �🗃️ Database Optimalisatie
 
 De sensors bevatten veel data. Voeg deze toe aan je recorder exclude om database issues te voorkomen:
  

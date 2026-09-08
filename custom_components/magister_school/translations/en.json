@@ -51,62 +51,6 @@
       "can_reach_server": "Magister server reachability"
     }
   },
-  "entity": {
-    "sensor": {
-      "magister_main_data": {
-        "name": "Magister Main Data",
-        "state": "Last update"
-      },
-      "magister_{kind}_overview": {
-        "name": "Magister {kind} Overview",
-        "state": "Appointments today"
-      },
-      "magister_{kind}_afspraken_vandaag": {
-        "name": "Magister {kind} Appointments Today", 
-        "state": "Number of appointments"
-      },
-      "magister_{kind}_huiswerk": {
-        "name": "Magister {kind} Homework",
-        "state": "Number of homework items"
-      },
-      "magister_{kind}_volgende_afspraak": {
-        "name": "Magister {kind} Next Appointment",
-        "state": "Next appointment"
-      },
-      "magister_{kind}_cijfers": {
-        "name": "Magister {kind} Grades", 
-        "state": "Number of grades"
-      },
-      "magister_{kind}_afspraken": {
-        "name": "Magister {kind} Appointments",
-        "state": "Total appointments"
-      },
-      "magister_{kind}_wijzigingen": {
-        "name": "Magister {kind} Schedule Changes",
-        "state": "Number of changes"
-      },
-      "magister_{kind}_opdrachten": {
-        "name": "Magister {kind} Assignments",
-        "state": "Number of assignments"
-      },
-      "magister_{kind}_absenties": {
-        "name": "Magister {kind} Absences", 
-        "state": "Number of absences"
-      },
-      "magister_{kind}_studiewijzers": {
-        "name": "Magister {kind} Study Guides", 
-        "state": "Number of study guides"
-      },
-      "magister_{kind}_activiteiten": {
-        "name": "Magister {kind} Activities",
-        "state": "Number of activities"
-      },
-      "magister_{kind}_aanmeldingen": {
-        "name": "Magister {kind} Enrollments",
-        "state": "Number of enrollments"
-      }
-    }
-  },
   "services": {
     "refresh": {
       "name": "Refresh", 

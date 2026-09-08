@@ -11,14 +11,6 @@
           "totp_secret": "2FA geheime sleutel (optioneel, alleen bij tweestapsverificatie)"
         }
       },
-      "reauth": {
-        "title": "Magister opnieuw inloggen",
-        "description": "Voer je nieuwe wachtwoord in. Laat de 2FA-sleutel leeg om de bestaande instelling te behouden.",
-        "data": {
-          "pass": "Wachtwoord",
-          "totp_secret": "2FA geheime sleutel (optioneel)"
-        }
-      },
       "reauth_confirm": {
         "title": "Magister opnieuw inloggen",
         "description": "Voer je nieuwe wachtwoord in. Laat de 2FA-sleutel leeg om de bestaande instelling te behouden.",
@@ -57,62 +49,6 @@
     "info": {
       "version": "Versie",
       "can_reach_server": "Bereikbaarheid Magister server"
-    }
-  },
-  "entity": {
-    "sensor": {
-      "magister_main_data": {
-        "name": "Magister Hoofddata",
-        "state": "Laatste update"
-      },
-      "magister_{kind}_overview": {
-        "name": "Magister {kind} Overzicht", 
-        "state": "Afspraken vandaag"
-      },
-      "magister_{kind}_afspraken_vandaag": {
-        "name": "Magister {kind} Afspraken Vandaag",
-        "state": "Aantal afspraken"
-      },
-      "magister_{kind}_huiswerk": {
-        "name": "Magister {kind} Huiswerk",
-        "state": "Aantal huiswerk items"
-      },
-      "magister_{kind}_volgende_afspraak": {
-        "name": "Magister {kind} Volgende Afspraak", 
-        "state": "Volgende afspraak"
-      },
-      "magister_{kind}_cijfers": {
-        "name": "Magister {kind} Cijfers",
-        "state": "Aantal cijfers"
-      },
-      "magister_{kind}_afspraken": {
-        "name": "Magister {kind} Afspraken",
-        "state": "Totaal afspraken"
-      },
-      "magister_{kind}_wijzigingen": {
-        "name": "Magister {kind} Roosterwijzigingen",
-        "state": "Aantal wijzigingen"
-      },
-      "magister_{kind}_opdrachten": {
-        "name": "Magister {kind} Opdrachten", 
-        "state": "Aantal opdrachten"
-      },
-      "magister_{kind}_absenties": {
-        "name": "Magister {kind} Absenties",
-        "state": "Aantal absenties"
-      },
-      "magister_{kind}_studiewijzers": {
-        "name": "Magister {kind} Studiewijzers",
-        "state": "Aantal studiewijzers"
-      },
-      "magister_{kind}_activiteiten": {
-        "name": "Magister {kind} Activiteiten",
-        "state": "Aantal activiteiten"
-      },
-      "magister_{kind}_aanmeldingen": {
-        "name": "Magister {kind} Aanmeldingen",
-        "state": "Aantal aanmeldingen"
-      }
     }
   },
   "services": {

@@ -1,3 +1,25 @@
+# Release v2.0.3
+
+## GitHub release text
+
+Magister School Integration v2.0.3 is a maintenance release that prepares the integration for the official HACS repository.
+
+### What's new in v2.0.3
+
+- Added a HACS + hassfest validation workflow (`.github/workflows/validate.yml`).
+- Added the required `issue_tracker` to `manifest.json`.
+- Added brand assets (`brand/icon.png`) so the integration gets a proper icon in HACS.
+- Removed unused `entity` translations with invalid `{kind}` keys (fixes hassfest).
+- Sorted `manifest.json` keys to satisfy hassfest.
+
+There are no changes to sensors or runtime behaviour in this release.
+
+## HACS update text
+
+Maintenance release: HACS and hassfest validation now pass, a brand icon was added, and the integration is prepared for the official HACS repository.
+
+## Previous release: v2.0.2
+
 # Release v2.0.2
 
 ## GitHub release text

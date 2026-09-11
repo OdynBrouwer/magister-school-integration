@@ -1,4 +1,20 @@
-# Release v2.0.4
+# Release v2.0.5
+
+## GitHub release text
+
+Magister School Integration v2.0.5 fixes two remaining 2FA login issues and moves the roster-change history into the Home Assistant config directory.
+
+### Fixes
+
+- **2FA login (#34)**: the `pairfidopromo` step no longer discards the username/password/session fields, and the soft-token challenge now also accepts the `softtoken` action spelling used by some Magister tenants.
+- **Login diagnostics**: login failures now write a message to stderr in JSON mode, so Home Assistant logs show a real cause instead of an empty JSON error.
+- **Roster-change history (#35)**: the `was_afwijkend` history is now stored under `/config/.storage` instead of the container home, so it survives Core updates and is included in backups.
+
+## HACS update text
+
+Fixes the remaining 2FA login issues (pairfidopromo payload and the softtoken spelling), improves login error reporting, and stores the roster-change history under /config so it survives updates and is backed up.
+
+## Previous release: v2.0.4
 
 ## GitHub release text
 

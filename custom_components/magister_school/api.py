@@ -14,13 +14,14 @@ class AuthenticationRequired(Exception):
     """Raised when Magister requires re-authentication (invalid password / 2FA)."""
 
 class MagisterAPI:
-    def __init__(self, school, user, password, totp_secret: str = None, days_back: int = 0, days_forward: int = 14):
+    def __init__(self, school, user, password, totp_secret: str = None, days_back: int = 0, days_forward: int = 14, history_file: str = None):
         self.school = school
         self.user = user
         self.password = password
         self.totp_secret = totp_secret
         self.days_back = days_back
         self.days_forward = days_forward
+        self.history_file = history_file
         self.authcode = DEFAULT_AUTHCODE
 
     def get_data(self):
@@ -34,6 +35,9 @@ class MagisterAPI:
             "--days-back", str(self.days_back),
             "--days-forward", str(self.days_forward),
         ]
+
+        if self.history_file:
+            cmd.extend(["--history-file", str(self.history_file)])
 
         env = dict(os.environ)
         env["MAGISTER_USERNAME"] = self.user

@@ -28,6 +28,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         totp_secret=entry.data.get("totp_secret"),
         days_back=entry.options.get("dagen_terug", 0),
         days_forward=entry.options.get("dagen_vooruit", 14),
+        history_file=hass.config.path(".storage", "magister_school_appointment_history.json"),
     )
 
     # Store coordinator

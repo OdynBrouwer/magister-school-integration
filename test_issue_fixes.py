@@ -218,3 +218,43 @@ class TestAPIParameters:
         assert "totp_secret=entry.data.get(\"totp_secret\")" in content
         assert "days_back=entry.options.get(\"dagen_terug\"" in content
         assert "days_forward=entry.options.get(\"dagen_vooruit\"" in content
+        assert 'history_file=hass.config.path(".storage"' in content
+
+
+class TestHistoryFile:
+    """Issue #35 \u2014 history file must live under /config, not the container home."""
+
+    def test_load_uses_explicit_history_file(self, tmp_path):
+        target = tmp_path / ".storage" / "magister_school_appointment_history.json"
+        path, data = magister._load_appointment_history(str(tmp_path / "unused.cache"), str(target))
+        assert path == target
+        assert data == {}
+
+    def test_save_creates_parent_directory(self, tmp_path):
+        target = tmp_path / ".storage" / "history.json"
+        magister._save_appointment_history(target, {"a": True})
+        assert target.exists()
+        assert "a" in target.read_text(encoding="utf-8")
+
+
+class TestLoginFixes:
+    """Issue #34 \u2014 pairfidopromo and softtoken handling."""
+
+    def _source(self):
+        script_path = os.path.join(
+            os.path.dirname(__file__),
+            "custom_components", "magister_school", "script", "magister.py"
+        )
+        with open(script_path, encoding="utf-8") as f:
+            return f.read()
+
+    def test_softtoken_variant_is_accepted(self):
+        content = self._source()
+        assert "in ('soft-token', 'softtoken')" in content
+
+    def test_pairfidopromo_keeps_existing_payload(self):
+        content = self._source()
+        start = content.index("'pairfidopromo'")
+        block = content[start:start + 400]
+        # The promo step must not rebuild the request dict (which dropped username/password).
+        assert "d = dict(" not in block

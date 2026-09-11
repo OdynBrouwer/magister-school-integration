@@ -39,7 +39,8 @@
         "description": "Configureer de update-instellingen",
         "data": {
           "poll_interval": "Update interval (seconden)",
-          "scan_interval": "Scan interval (seconden)"
+          "dagen_terug": "Dagen terug in het verleden (0 = vandaag)",
+          "dagen_vooruit": "Dagen vooruit in de toekomst (14 = twee weken)"
         }
       }
     }

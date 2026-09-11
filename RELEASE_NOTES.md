@@ -1,4 +1,25 @@
-# Release v2.0.3
+# Release v2.0.4
+
+## GitHub release text
+
+Magister School Integration v2.0.4 fixes the reported 2FA, date-window, homework and roster-change issues, and moves credentials out of the command line.
+
+### Fixes
+
+- **TOTP / 2FA (#34)**: the soft-token challenge now posts the `Code` field, and the TOTP secret is passed through from the config entry to the script.
+- **Configurable date window (#32)**: new `dagen_terug` / `dagen_vooruit` options (defaults 0 / 14), validated as non-negative and applied immediately when changed.
+- **Homework (#31)**: the homework sensor now shows unfinished homework, with `aantal_huiswerk_totaal`, `aantal_huiswerk_afgerond` and `aantal_huiswerk_onafgerond` attributes. Matching uses subject name and code.
+- **Roster changes / uitval (#33)**: `was_afwijkend` is remembered so a lesson stays marked as changed even after Magister overwrites `Status` with `In Gebruik` or `Afgesloten`.
+
+### Security
+
+- Credentials (username, password and TOTP secret) are now passed via environment variables instead of command-line arguments, so they no longer appear in process listings or timeout logs (#23).
+
+## HACS update text
+
+Fixes 2FA/TOTP login, adds a configurable date window, improves homework and roster-change handling, and keeps credentials out of the command line.
+
+## Previous release: v2.0.3
 
 ## GitHub release text
 

@@ -175,6 +175,7 @@ class KindOverviewSensor(SensorEntity):
             "wijzigingen": kind_data.get("wijzigingen", []),
             "aantal_afspraken_vandaag": kind_data.get("aantal_afspraken_vandaag", 0),
             "aantal_huiswerk": kind_data.get("aantal_huiswerk", 0),
+            "aantal_huiswerk_totaal": kind_data.get("aantal_huiswerk_totaal", 0),
             "aantal_uitval": kind_data.get("aantal_uitval", 0),
             "volgende_afspraak": kind_data.get("volgende_afspraak", "Geen"),
             "volgende_vak": kind_data.get("volgende_vak", ""),
@@ -319,9 +320,16 @@ class KindAantalHuiswerkSensor(SensorEntity):
 
     @property
     def extra_state_attributes(self):
+        kind_data = self._get_kind_data()
+        totaal = kind_data.get("aantal_huiswerk_totaal", 0) if kind_data else 0
+        onafgerond = kind_data.get("aantal_huiswerk", 0) if kind_data else 0
+        afgerond = totaal - onafgerond
         return {
             "kind_naam": self._kind_naam,
-            "huiswerk_items": self._coordinator.data.get("opdrachten", {}).get(self._kind_naam, []) if self._coordinator.data else []
+            "huiswerk_items": self._coordinator.data.get("opdrachten", {}).get(self._kind_naam, []) if self._coordinator.data else [],
+            "aantal_huiswerk_totaal": totaal,
+            "aantal_huiswerk_afgerond": afgerond,
+            "aantal_huiswerk_onafgerond": onafgerond,
         }
 
     def _get_kind_data(self):

@@ -8,6 +8,11 @@ import json
 import sys
 import os
 import traceback
+import struct
+import hashlib
+import hmac
+import base64
+import time as time_mod
 from pathlib import Path
 import argparse
 
@@ -134,6 +139,20 @@ def infotstr(t, typenames):
         return "??"
 
     return typenames.get(i, "??")
+
+
+def generate_totp(secret_b32):
+    """Generate a 6-digit TOTP code from a base32-encoded secret."""
+    cleaned = secret_b32.replace(" ", "").upper()
+    padding = (8 - len(cleaned) % 8) % 8
+    cleaned += "=" * padding
+    key = base64.b32decode(cleaned)
+    counter = int(time_mod.time()) // 30
+    msg = struct.pack(">Q", counter)
+    h = hmac.new(key, msg, hashlib.sha1).digest()
+    offset = h[-1] & 0x0F
+    code_int = struct.unpack(">I", h[offset:offset + 4])[0] & 0x7FFFFFFF
+    return str(code_int % 1000000).zfill(6)
 
 
 class Magister:
@@ -372,6 +391,17 @@ class Magister:
             r = self.httpreq(f"https://{self.magisterserver}/challenges/skip-pair-fido-promo", json.dumps(d))
 
 
+        if r.get('action') == 'soft-token':
+            totp_secret = getattr(self.args, 'totp_secret', None)
+            if not totp_secret:
+                if not getattr(self.args, "json", False):
+                    print("ERROR: 2FA (TOTP) required but no totp_secret provided")
+                return False
+            totp_code = generate_totp(totp_secret)
+            d["Code"] = totp_code
+            r = self.httpreq(f"https://{self.magisterserver}/challenges/soft-token", json.dumps(d))
+
+
         if not r.get('redirectURL') or r.get('error'):
             if r.get('action'):
                 if not getattr(self.args, "json", False):
@@ -509,6 +539,67 @@ def safe_datum_field(item, *keys):
             return datum(v)
     return "?"
 
+def _appointment_key(kind_id, item):
+    """Return a stable key for remembering an appointment's history."""
+    item_id = item.get("Id") or item.get("ID")
+    if item_id:
+        return f"{kind_id}:{item_id}"
+    vak = item.get("Vak")
+    vak_naam = vak.get("Naam", "") if isinstance(vak, dict) else vak or ""
+    parts = (
+        kind_id,
+        item.get("Start") or item.get("Datum") or "",
+        item.get("Einde") or item.get("Eind") or "",
+        item.get("Omschrijving") or "",
+        vak_naam,
+    )
+    return "|".join(str(part) for part in parts)
+
+HISTORY_LIMIT = 5000
+
+def _remember_was_afwijkend(history, kind_id, item):
+    """Keep an appointment marked as changed after Magister overwrites Status."""
+    key = _appointment_key(kind_id, item)
+    current = item.get("Status", 0) not in (0, 1, 2, 6, 7, 8)
+    if current:
+        history[key] = True
+        if len(history) > HISTORY_LIMIT:
+            for old_key in list(history)[: len(history) - HISTORY_LIMIT]:
+                del history[old_key]
+    return current or history.get(key, False)
+
+def _load_appointment_history(cache_path):
+    cache_path = Path(cache_path)
+    path = cache_path.with_name(
+        cache_path.name.replace(".magister_auth_cache", ".magister_appointment_history") + ".json"
+    )
+    try:
+        with path.open(encoding="utf-8") as fh:
+            data = json.load(fh)
+        return path, data if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return path, {}
+
+def _save_appointment_history(path, history):
+    try:
+        with path.open("w", encoding="utf-8") as fh:
+            json.dump(history, fh)
+    except OSError:
+        pass
+
+def _subject_names(value):
+    """Extract subject names from a Magister vak value (dict, list or string)."""
+    if isinstance(value, dict):
+        return [str(n) for n in (value.get("Naam"), value.get("Code")) if n]
+    if isinstance(value, list):
+        out = []
+        for entry in value:
+            out.extend(_subject_names(entry))
+        return out
+    if value:
+        return [str(value)]
+    return []
+
 def main():
     parser = argparse.ArgumentParser(description='Magister info dump')
     parser.add_argument('--debug', '-d', action='store_true', help=argparse.SUPPRESS)
@@ -525,6 +616,9 @@ def main():
     parser.add_argument("--authcode", help=argparse.SUPPRESS)
     parser.add_argument('--schoolserver', help=argparse.SUPPRESS)
     parser.add_argument('--magisterserver', default='accounts.magister.net', help=argparse.SUPPRESS)
+    parser.add_argument('--totp-secret', help=argparse.SUPPRESS)
+    parser.add_argument('--days-back', type=int, default=0, help=argparse.SUPPRESS)
+    parser.add_argument('--days-forward', type=int, default=14, help=argparse.SUPPRESS)
     args = parser.parse_args()
 
     if not args.config:
@@ -544,6 +638,14 @@ def main():
                 print(f"config: {e}")
     elif not args.json:
         print(f"Config file not found: {args.config}")
+
+    # Credentials via environment variables als fallback (niet via CLI-argumenten)
+    if not args.username:
+        args.username = os.environ.get("MAGISTER_USERNAME")
+    if not args.password:
+        args.password = os.environ.get("MAGISTER_PASSWORD")
+    if not getattr(args, "totp_secret", None):
+        args.totp_secret = os.environ.get("MAGISTER_TOTP_SECRET")
 
     # Cache naam bepalen - maak per schoolserver + username uniek om conflicts te voorkomen
     if not args.cache:
@@ -593,6 +695,8 @@ def main():
         "studiewijzers": {},
         "activiteiten": {}
     }
+
+    history_path, appointment_history = _load_appointment_history(args.cache)
 
     d = mg.req("account")
 
@@ -647,8 +751,10 @@ def main():
         ]
 
         # Rooster data: determine lesperiode as before
-        start_date = deltaymd()
-        end_date = deltaymd(weeks=+2)
+        days_back = getattr(args, 'days_back', 0)
+        days_forward = getattr(args, 'days_forward', 14)
+        start_date = deltaymd(days=-days_back) if days_back else deltaymd()
+        end_date = deltaymd(days=days_forward)
 
         params = dict(van=start_date, tot=end_date)
         target_date = datetime.strptime(start_date, "%Y-%m-%d").date()
@@ -688,9 +794,11 @@ def main():
                 "omschrijving": item.get("Omschrijving", ""),
                 "inhoud": dehtml(item.get("Inhoud", "")),
                 "vak": ", ".join(filter(None, ([item.get("Vak", {}).get("Naam")] if item.get("Vak") else []) + [v.get("Naam") for v in (item.get("Vakken") or [])])),
+                "vak_code": ", ".join(filter(None, ([item.get("Vak", {}).get("Code")] if item.get("Vak") else []) + [v.get("Code") for v in (item.get("Vakken") or [])])),
                 "docent": ", ".join(filter(None, ([item.get("Docent", {}).get("Naam")] if item.get("Docent") else []) + [d.get("Naam") for d in (item.get("Docenten") or [])])),
                 "is_huiswerk": item.get("InfoType", 0) == 1,
                 "is_uitval": "Vervallen" in (infotstr(item.get("Status", 0), AFSPRAAK_STATUS)),
+                "was_afwijkend": _remember_was_afwijkend(appointment_history, kindid, item),
                 "lesuurstart": item.get("LesuurVan"),
                 "lesuureinde": item.get("LesuurTotMet"),
             }
@@ -708,14 +816,29 @@ def main():
                 "omschrijving": item.get("Omschrijving", ""),
                 "inhoud": dehtml(item.get("Inhoud", "")),
                 "vak": ", ".join(filter(None, ([item.get("Vak", {}).get("Naam")] if item.get("Vak") else []) + [v.get("Naam") for v in (item.get("Vakken") or [])])),
+                "vak_code": ", ".join(filter(None, ([item.get("Vak", {}).get("Code")] if item.get("Vak") else []) + [v.get("Code") for v in (item.get("Vakken") or [])])),
                 "docent": ", ".join(filter(None, ([item.get("Docent", {}).get("Naam")] if item.get("Docent") else []) + [d.get("Naam") for d in (item.get("Docenten") or [])])),
                 "is_huiswerk": item.get("InfoType", 0) == 1,
                 "is_uitval": "Vervallen" in (infotstr(item.get("Status", 0), AFSPRAAK_STATUS)),
+                "was_afwijkend": _remember_was_afwijkend(appointment_history, kindid, item),
                 "lesuurstart": item.get("LesuurVan"),
                 "lesuureinde": item.get("LesuurTotMet"),
             }
             for item in wijzigingen.get("Items", [])
         ]
+
+        # Opdrachten ophalen voor huiswerk-filtering
+        opdr_data = mg.req("personen", kindid, "opdrachten")
+        submitted_opdr = set()
+        for o in opdr_data.get("Items", []):
+            if not o.get("IngeleverdOp"):
+                continue
+            deadline = o.get("InleverenVoor", "")
+            if not deadline:
+                continue
+            date = str(deadline)[:10]
+            for name in _subject_names(o.get("Vak")):
+                submitted_opdr.add((date, name))
 
         # Tel statistieken
         vandaag = datetime.now().strftime('%Y-%m-%d')
@@ -723,9 +846,19 @@ def main():
             a for a in kind_data["afspraken"]
             if a["start"].startswith(vandaag)
         ])
-        kind_data["aantal_huiswerk"] = len([
+        kind_data["aantal_huiswerk_totaal"] = len([
             a for a in kind_data["afspraken"]
             if a["is_huiswerk"]
+        ])
+        def _is_submitted(a):
+            date = str(a.get("start", ""))[:10]
+            names = [n.strip() for n in str(a.get("vak", "")).split(",") if n.strip()]
+            codes = [c.strip() for c in str(a.get("vak_code", "")).split(",") if c.strip()]
+            return any((date, match) in submitted_opdr for match in names + codes)
+
+        kind_data["aantal_huiswerk"] = len([
+            a for a in kind_data["afspraken"]
+            if a["is_huiswerk"] and not _is_submitted(a)
         ])
 
         # Volgende afspraak
@@ -771,8 +904,7 @@ def main():
             for item in abs_data.get("Items", [])
         ]
 
-        # Opdrachten
-        opdr_data = mg.req("personen", kindid, "opdrachten")
+        # Opdrachten (al eerder opgehaald voor huiswerk-filtering)
         output_data["opdrachten"][kind_naam] = [
             {
                 "titel": item.get("Titel", ""),
@@ -813,6 +945,7 @@ def main():
                 ]
             })
 
+    _save_appointment_history(history_path, appointment_history)
     print(json.dumps(output_data, ensure_ascii=False, separators=(',', ':')))
 
 # Entry point

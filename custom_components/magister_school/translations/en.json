@@ -39,7 +39,8 @@
         "description": "Configure update settings",
         "data": {
           "poll_interval": "Update interval (seconds)",
-          "scan_interval": "Scan interval (seconds)" 
+          "dagen_terug": "Days back in the past (0 = today)",
+          "dagen_vooruit": "Days forward into the future (14 = two weeks)" 
         }
       }
     }

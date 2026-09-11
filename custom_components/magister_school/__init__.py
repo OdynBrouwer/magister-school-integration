@@ -11,6 +11,10 @@ _LOGGER = logging.getLogger(__name__)
 # Suffixes die we willen opruimen
 SUFFIXES_TO_CLEAN = ["_1", "_2", "_3", "_4", "_5"]
 
+async def _async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload the config entry when options change."""
+    await hass.config_entries.async_reload(entry.entry_id)
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Magister from a config entry."""
     hass.data.setdefault(DOMAIN, {})
@@ -20,11 +24,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass,
         entry.data["school"],
         entry.data["user"],
-        entry.data["pass"]
+        entry.data["pass"],
+        totp_secret=entry.data.get("totp_secret"),
+        days_back=entry.options.get("dagen_terug", 0),
+        days_forward=entry.options.get("dagen_vooruit", 14),
     )
 
     # Store coordinator
     hass.data[DOMAIN][entry.entry_id] = coordinator
+
+    # Reload the entry when options change (date window, poll interval)
+    entry.async_on_unload(entry.add_update_listener(_async_update_options))
 
     # Fetch initial data
     await coordinator.async_config_entry_first_refresh()

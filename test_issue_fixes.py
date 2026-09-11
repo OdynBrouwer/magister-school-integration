@@ -217,3 +217,95 @@ class TestLoginFixes:
         block = content[start:start + 400]
         # The promo step must not rebuild the request dict (which dropped username/password).
         assert "d = dict(" not in block
+
+
+class TestVerrijkteVelden:
+    """Extra velden uit de Magister API: absenties, klas/profiel, les-extra's."""
+
+    def _source(self):
+        script_path = os.path.join(
+            os.path.dirname(__file__),
+            "custom_components", "magister_school", "script", "magister.py"
+        )
+        with open(script_path, encoding="utf-8") as f:
+            return f.read()
+
+    def test_absenties_velden(self):
+        content = self._source()
+        assert '"geoorloofd": bool(item.get("Geoorloofd"' in content
+        assert '"code": item.get("Code"' in content
+        assert '"lesuur": item.get("Lesuur")' in content
+
+    def test_klas_en_profiel(self):
+        content = self._source()
+        assert '"klas": ""' in content
+        assert '"profiel": ""' in content
+        assert 'actieve_aanmelding.get("Groep")' in content
+        assert 'actieve_aanmelding.get("Profiel")' in content
+
+    def test_les_extra_velden(self):
+        content = self._source()
+        assert '"opmerking": item.get("Opmerking")' in content
+        assert '"is_online": bool(item.get("IsOnlineDeelname"' in content
+        assert '"duurt_hele_dag": bool(item.get("DuurtHeleDag"' in content
+        assert '"docentcode": ", ".join(filter(None, ([item.get("Docent"' in content
+        assert '"vak_id": ", ".join(filter(None, ([str(item.get("Vak"' in content
+
+    def test_overview_sensor_toont_klas_profiel(self):
+        sensor_path = os.path.join(
+            os.path.dirname(__file__),
+            "custom_components", "magister_school", "sensor.py"
+        )
+        with open(sensor_path, encoding="utf-8") as f:
+            content = f.read()
+        assert '"klas": kind_data.get("klas")' in content
+        assert '"profiel": kind_data.get("profiel")' in content
+
+
+class TestVoortgangscijfers:
+    """Volledige cijfers via /api/aanmeldingen/{id}/cijfers."""
+
+    def _source(self):
+        script_path = os.path.join(
+            os.path.dirname(__file__),
+            "custom_components", "magister_school", "script", "magister.py"
+        )
+        with open(script_path, encoding="utf-8") as f:
+            return f.read()
+
+    def test_output_heeft_voortgangscijfers(self):
+        content = self._source()
+        assert '"voortgangscijfers": {}' in content
+
+    def test_fetcht_actieve_aanmelding(self):
+        content = self._source()
+        # Alleen de actieve (huidige) aanmelding wordt opgehaald
+        assert 'mg.req("aanmeldingen", meld["Id"], "cijfers")' in content
+        assert 'meld = actieve_aanmelding' in content
+
+    def test_leest_platte_items_met_kolom(self):
+        content = self._source()
+        # Echte structuur: platte 'items' (kleine letter) met details in 'kolom'
+        assert 'get("items", [])' in content
+        assert 'cijfer.get("kolom")' in content
+        assert 'kolom.get("studievakId")' in content
+        assert 'kolom.get("weegfactor")' in content
+        assert 'cijfer.get("cijferGetal")' in content
+        assert 'cijfer.get("isVoldoende"' in content
+        # Oude (foutieve) aannames mogen er niet meer in staan
+        assert 'CijferPeriodes' not in content
+        assert 'BehaaldeWaarde' not in content
+
+    def test_geen_debug_capture_meer(self):
+        content = self._source()
+        assert "voortgang_raw_debug" not in content
+        assert "magister_voortgang_debug.json" not in content
+
+    def test_overview_sensor_toont_voortgangscijfers(self):
+        sensor_path = os.path.join(
+            os.path.dirname(__file__),
+            "custom_components", "magister_school", "sensor.py"
+        )
+        with open(sensor_path, encoding="utf-8") as f:
+            content = f.read()
+        assert '"voortgangscijfers"' in content

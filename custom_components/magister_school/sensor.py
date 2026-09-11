@@ -170,6 +170,8 @@ class KindOverviewSensor(SensorEntity):
             "naam": kind_data.get("naam"),
             "stamnummer": kind_data.get("stamnummer"),
             "geboortedatum": kind_data.get("geboortedatum"),
+            "klas": kind_data.get("klas"),
+            "profiel": kind_data.get("profiel"),
             "aanmeldingen": kind_data.get("aanmeldingen", []),
             "afspraken": kind_data.get("afspraken", []),
             "wijzigingen": kind_data.get("wijzigingen", []),
@@ -190,7 +192,7 @@ class KindOverviewSensor(SensorEntity):
             pass
 
         # Voeg extra data toe
-        for data_type in ["cijfers", "opdrachten", "absenties", "studiewijzers", "activiteiten"]:
+        for data_type in ["cijfers", "voortgangscijfers", "opdrachten", "absenties", "studiewijzers", "activiteiten"]:
             if data_type in self._coordinator.data and self._kind_naam in self._coordinator.data[data_type]:
                 attributes[data_type] = self._coordinator.data[data_type][self._kind_naam]
 

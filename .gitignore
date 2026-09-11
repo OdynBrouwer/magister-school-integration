@@ -14,3 +14,8 @@ __pycache__/
 build/
 dist/
 *.egg-info/
+
+# Debug artifacts / dumps
+raw_dump.json
+LOGS HA/
+.magister*

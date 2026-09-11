@@ -170,6 +170,7 @@ class Magister:
         if args.debug:
             handlers.append(urllib.request.HTTPSHandler(debuglevel=1))
         self.opener = urllib.request.build_opener(*handlers)
+        self._raw_dump = {} if getattr(args, 'dump_raw', None) else None
 
     def logprint(self, *args):
         # In JSON-modus altijd stil zijn; en alleen loggen als debug True.
@@ -451,7 +452,10 @@ class Magister:
             qs = "?" + urllib.parse.urlencode(querydict)
 
         path = "/".join(str(_) for _ in args)
-        return self.httpreq(f"https://{self.schoolserver}/api/{path}{qs}")
+        response = self.httpreq(f"https://{self.schoolserver}/api/{path}{qs}")
+        if self._raw_dump is not None:
+            self._raw_dump.setdefault(path + qs, response)
+        return response
 
     def getlink(self, link):
         """
@@ -615,6 +619,7 @@ def main():
     parser.add_argument('--days-forward', type=int, default=14, help=argparse.SUPPRESS)
     parser.add_argument('--history-file', help=argparse.SUPPRESS)
     parser.add_argument('--inspect-homework', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--dump-raw', help=argparse.SUPPRESS)
     args = parser.parse_args()
 
     if not args.config:
@@ -690,6 +695,7 @@ def main():
         "last_update": datetime.now().isoformat(),
         "kinderen": {},
         "cijfers": {},
+        "voortgangscijfers": {},
         "absenties": {},
         "opdrachten": {},
         "studiewijzers": {},
@@ -734,7 +740,9 @@ def main():
         kind_data = {
             "naam": kind_naam,
             "stamnummer": kind.get('Stamnummer', ''),
-            "geboortedatum": kind.get('Geboortedatum', '')
+            "geboortedatum": kind.get('Geboortedatum', ''),
+            "klas": "",
+            "profiel": ""
         }
         kindid = kind["Id"]
 
@@ -749,6 +757,23 @@ def main():
             }
             for item in x.get("Items", [])
         ]
+
+        # Huidige klas en profiel uit de actieve aanmelding
+        nu = datetime.now().date()
+        actieve_aanmelding = None
+        for m in x.get("Items", []):
+            try:
+                s = datetime.strptime((m.get("Start") or "")[:10], "%Y-%m-%d").date()
+                e = datetime.strptime((m.get("Einde") or "")[:10], "%Y-%m-%d").date()
+            except Exception:
+                continue
+            if s <= nu <= e:
+                actieve_aanmelding = m
+        if actieve_aanmelding is None and x.get("Items"):
+            actieve_aanmelding = x["Items"][-1]
+        if actieve_aanmelding:
+            kind_data["klas"] = (actieve_aanmelding.get("Groep") or {}).get("Omschrijving", "")
+            kind_data["profiel"] = actieve_aanmelding.get("Profiel") or ""
 
         # Rooster data: determine lesperiode as before
         days_back = getattr(args, 'days_back', 0)
@@ -797,10 +822,14 @@ def main():
                 "type": infotstr(item.get("InfoType", 0), AFSPRAAK_INFO_TYPE),
                 "lokaal": ", ".join(filter(None, [item.get("Lokatie")] + [l.get("Naam") for l in (item.get("Lokalen") or [])])),
                 "omschrijving": item.get("Omschrijving", ""),
+                "opmerking": item.get("Opmerking") or "",
                 "inhoud": dehtml(item.get("Inhoud", "")),
+                "is_online": bool(item.get("IsOnlineDeelname", False)),
+                "duurt_hele_dag": bool(item.get("DuurtHeleDag", False)),
                 "vak": ", ".join(filter(None, ([item.get("Vak", {}).get("Naam")] if item.get("Vak") else []) + [v.get("Naam") for v in (item.get("Vakken") or [])])),
-                "vak_code": ", ".join(filter(None, ([item.get("Vak", {}).get("Code")] if item.get("Vak") else []) + [v.get("Code") for v in (item.get("Vakken") or [])])),
+                "vak_id": ", ".join(filter(None, ([str(item.get("Vak", {}).get("Id"))] if item.get("Vak") else []) + [str(v.get("Id")) for v in (item.get("Vakken") or [])])),
                 "docent": ", ".join(filter(None, ([item.get("Docent", {}).get("Naam")] if item.get("Docent") else []) + [d.get("Naam") for d in (item.get("Docenten") or [])])),
+                "docentcode": ", ".join(filter(None, ([item.get("Docent", {}).get("Docentcode")] if item.get("Docent") else []) + [d.get("Docentcode") for d in (item.get("Docenten") or [])])),
                 "is_huiswerk": item.get("InfoType", 0) == 1,
                 "is_afgerond": bool(item.get("Afgerond", False)),
                 "is_uitval": "Vervallen" in (infotstr(item.get("Status", 0), AFSPRAAK_STATUS)),
@@ -820,10 +849,14 @@ def main():
                 "type": infotstr(item.get("InfoType", 0), AFSPRAAK_INFO_TYPE),
                 "lokaal": item.get("Lokatie", ""),
                 "omschrijving": item.get("Omschrijving", ""),
+                "opmerking": item.get("Opmerking") or "",
                 "inhoud": dehtml(item.get("Inhoud", "")),
+                "is_online": bool(item.get("IsOnlineDeelname", False)),
+                "duurt_hele_dag": bool(item.get("DuurtHeleDag", False)),
                 "vak": ", ".join(filter(None, ([item.get("Vak", {}).get("Naam")] if item.get("Vak") else []) + [v.get("Naam") for v in (item.get("Vakken") or [])])),
-                "vak_code": ", ".join(filter(None, ([item.get("Vak", {}).get("Code")] if item.get("Vak") else []) + [v.get("Code") for v in (item.get("Vakken") or [])])),
+                "vak_id": ", ".join(filter(None, ([str(item.get("Vak", {}).get("Id"))] if item.get("Vak") else []) + [str(v.get("Id")) for v in (item.get("Vakken") or [])])),
                 "docent": ", ".join(filter(None, ([item.get("Docent", {}).get("Naam")] if item.get("Docent") else []) + [d.get("Naam") for d in (item.get("Docenten") or [])])),
+                "docentcode": ", ".join(filter(None, ([item.get("Docent", {}).get("Docentcode")] if item.get("Docent") else []) + [d.get("Docentcode") for d in (item.get("Docenten") or [])])),
                 "is_huiswerk": item.get("InfoType", 0) == 1,
                 "is_uitval": "Vervallen" in (infotstr(item.get("Status", 0), AFSPRAAK_STATUS)),
                 "was_afwijkend": _remember_was_afwijkend(appointment_history, kindid, item),
@@ -875,6 +908,40 @@ def main():
             for item in c.get("items", [])
         ]
 
+        # Voortgangscijfers van het huidige schooljaar (actieve aanmelding).
+        # /api/aanmeldingen/{id}/cijfers geeft een platte 'items'-lijst; de
+        # vak-/toetsgegevens zitten in 'kolom' (naam bv. "ne101", studievakId,
+        # weegfactor, periode). Het vak-Id wordt omgezet naar de afkorting die
+        # in kolom.naam vervat zit ("ne101" -> "ne").
+        voortgang = []
+        meld = actieve_aanmelding
+        if meld and meld.get("Id"):
+            try:
+                vc = mg.req("aanmeldingen", meld["Id"], "cijfers")
+            except Exception:
+                vc = None
+            for cijfer in (vc or {}).get("items", []) or []:
+                kolom = cijfer.get("kolom") or {}
+                kolom_naam = kolom.get("naam") or ""
+                vak_match = re.match(r"^([a-z]+)", kolom_naam)
+                voortgang.append({
+                    "lesperiode": meld.get("Lesperiode", ""),
+                    "vak": vak_match.group(1) if vak_match else "",
+                    "vak_id": kolom.get("studievakId"),
+                    "kolom": kolom_naam,
+                    "omschrijving": kolom.get("omschrijving") or kolom.get("kop") or "",
+                    "periode": (kolom.get("periode") or {}).get("code", ""),
+                    "waarde": cijfer.get("waarde", ""),
+                    "cijfer": cijfer.get("cijferGetal"),
+                    "weegfactor": kolom.get("weegfactor"),
+                    "is_voldoende": bool(cijfer.get("isVoldoende", False)),
+                    "telt_mee": bool(cijfer.get("teltMee", True)),
+                    "moet_inhalen": bool(cijfer.get("moetInhalen", False)),
+                    "vrijstelling": bool(cijfer.get("heeftVrijstelling", False)),
+                    "ingevoerd_op": datum(cijfer.get("ingevoerdOp"))
+                })
+        output_data["voortgangscijfers"][kind_naam] = voortgang
+
         # Absenties
         abs_van = deltaymd(years=-1)
         abs_tot = deltaymd(weeks=+1)
@@ -884,7 +951,10 @@ def main():
                 "start": datum(item.get("Start")),
                 "einde": datum(item.get("Eind")),
                 "omschrijving": item.get("Omschrijving", ""),
-                "afspraak": item.get("Afspraak", {}).get("Omschrijving", "")
+                "afspraak": item.get("Afspraak", {}).get("Omschrijving", ""),
+                "geoorloofd": bool(item.get("Geoorloofd", False)),
+                "code": item.get("Code", ""),
+                "lesuur": item.get("Lesuur")
             }
             for item in abs_data.get("Items", [])
         ]
@@ -931,6 +1001,12 @@ def main():
             })
 
     _save_appointment_history(history_path, appointment_history)
+
+    if getattr(args, 'dump_raw', None) and mg._raw_dump is not None:
+        with open(args.dump_raw, 'w', encoding='utf-8') as fh:
+            json.dump(mg._raw_dump, fh, indent=2, ensure_ascii=False, default=str)
+        sys.exit(0)
+
     print(json.dumps(output_data, ensure_ascii=False, separators=(',', ':')))
 
 # Entry point

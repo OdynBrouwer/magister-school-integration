@@ -83,72 +83,31 @@ class TestWasAfwijkend:
             magister.HISTORY_LIMIT = original
 
 
-class TestHuiswerkFiltering:
-    """Issue #31 — homework filtering by submitted assignments."""
+class TestHuiswerkAfgerond:
+    """Issue #31 — homework finished/unfinished based on the Afgerond field."""
 
-    def test_subject_names_normalizes_dict(self):
-        assert set(magister._subject_names({"Naam": "Wiskunde", "Code": "WIS"})) == {"Wiskunde", "WIS"}
-
-    def test_subject_names_handles_string_and_list(self):
-        assert magister._subject_names("Engels") == ["Engels"]
-        assert magister._subject_names([{"Naam": "Frans"}]) == ["Frans"]
-
-    def test_submitted_set_built_with_normalized_names(self):
-        opdr_items = [
-            {"Vak": {"Naam": "Wiskunde", "Code": "WIS"}, "InleverenVoor": "2026-09-15T00:00:00Z", "IngeleverdOp": "2026-09-14T10:00:00Z"},
-            {"Vak": "Engels", "InleverenVoor": "2026-09-16T00:00:00Z", "IngeleverdOp": None},
-        ]
-        submitted = set()
-        for o in opdr_items:
-            if not o.get("IngeleverdOp"):
-                continue
-            deadline = o.get("InleverenVoor", "")
-            date = str(deadline)[:10]
-            for name in magister._subject_names(o.get("Vak")):
-                submitted.add((date, name))
-
-        assert ("2026-09-15", "Wiskunde") in submitted
-        assert ("2026-09-15", "WIS") in submitted
-        assert ("2026-09-16", "Engels") not in submitted
-
-    def test_submitted_opdr_set_built_correctly(self):
-        """Test that submitted assignments create correct lookup keys."""
-        opdr_items = [
-            {"Vak": "WIS", "InleverenVoor": "2026-09-15T00:00:00Z", "IngeleverdOp": "2026-09-14T10:00:00Z"},
-            {"Vak": "ENG", "InleverenVoor": "2026-09-16T00:00:00Z", "IngeleverdOp": None},
-            {"Vak": "FRA", "InleverenVoor": "2026-09-17T00:00:00Z", "IngeleverdOp": "2026-09-16T08:00:00Z"},
-        ]
-        submitted = set()
-        for o in opdr_items:
-            if o.get("IngeleverdOp"):
-                vak = o.get("Vak", "")
-                deadline = o.get("InleverenVoor", "")
-                if vak and deadline:
-                    submitted.add((vak, deadline[:10]))
-
-        assert ("WIS", "2026-09-15") in submitted
-        assert ("FRA", "2026-09-17") in submitted
-        assert ("ENG", "2026-09-16") not in submitted  # Not submitted
-
-    def test_huiswerk_count_excludes_submitted(self):
-        """Test that huiswerk count excludes submitted assignments."""
+    def test_huiswerk_count_uses_afgerond(self):
         afspraken = [
-            {"is_huiswerk": True, "vak": "WIS", "start": "2026-09-15 09:00:00"},
-            {"is_huiswerk": True, "vak": "ENG", "start": "2026-09-16 10:00:00"},
-            {"is_huiswerk": True, "vak": "FRA", "start": "2026-09-17 11:00:00"},
-            {"is_huiswerk": False, "vak": "NAS", "start": "2026-09-18 08:00:00"},
+            {"is_huiswerk": True, "is_afgerond": False},
+            {"is_huiswerk": True, "is_afgerond": True},
+            {"is_huiswerk": True, "is_afgerond": False},
+            {"is_huiswerk": False, "is_afgerond": False},
         ]
-        submitted_opdr = {("WIS", "2026-09-15"), ("FRA", "2026-09-17")}
+        huiswerk = [a for a in afspraken if a["is_huiswerk"]]
+        totaal = len(huiswerk)
+        onafgerond = len([a for a in huiswerk if not a.get("is_afgerond")])
+        assert totaal == 3
+        assert onafgerond == 2
 
-        totaal = len([a for a in afspraken if a["is_huiswerk"]])
-        onafgerond = len([
-            a for a in afspraken
-            if a["is_huiswerk"]
-            and (a.get("vak", ""), a.get("start", "")[:10]) not in submitted_opdr
-        ])
-
-        assert totaal == 3  # All homework items
-        assert onafgerond == 1  # Only ENG is unsubmitted
+    def test_source_reads_afgerond_field(self):
+        script_path = os.path.join(
+            os.path.dirname(__file__),
+            "custom_components", "magister_school", "script", "magister.py"
+        )
+        with open(script_path, encoding="utf-8") as f:
+            content = f.read()
+        assert '"is_afgerond": bool(item.get("Afgerond"' in content
+        assert 'submitted_opdr' not in content
 
 
 class TestDateWindow:

@@ -137,6 +137,8 @@ class MagisterOptionsFlow(config_entries.OptionsFlow):
         options_schema = vol.Schema(
             {
                 vol.Optional("poll_interval", default=self._config_entry.options.get("poll_interval", 300)): int,
+                vol.Optional("dagen_terug", default=self._config_entry.options.get("dagen_terug", 0)): vol.All(int, vol.Range(min=0)),
+                vol.Optional("dagen_vooruit", default=self._config_entry.options.get("dagen_vooruit", 14)): vol.All(int, vol.Range(min=0)),
             }
         )
 

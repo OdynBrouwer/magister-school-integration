@@ -12,8 +12,8 @@ _LOGGER = logging.getLogger(__name__)
 class MagisterDataUpdateCoordinator(DataUpdateCoordinator):
     """Coordinator voor Magister data updates."""
 
-    def __init__(self, hass: HomeAssistant, school: str, username: str, password: str, totp_secret: str = None):
-        self.api = MagisterAPI(school, username, password, totp_secret=totp_secret)
+    def __init__(self, hass: HomeAssistant, school: str, username: str, password: str, totp_secret: str = None, days_back: int = 0, days_forward: int = 14):
+        self.api = MagisterAPI(school, username, password, totp_secret=totp_secret, days_back=days_back, days_forward=days_forward)
         
         super().__init__(
             hass,

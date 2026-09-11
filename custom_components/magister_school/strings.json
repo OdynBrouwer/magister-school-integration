@@ -44,7 +44,9 @@
           "title": "Magister opties",
           "description": "Hier kun je instellingen wijzigen.",
           "data": {
-            "poll_interval": "Interval in seconden voor het ophalen van data"
+            "poll_interval": "Interval in seconden voor het ophalen van data",
+            "dagen_terug": "Dagen terug in het verleden (0 = vandaag)",
+            "dagen_vooruit": "Dagen vooruit in de toekomst (14 = twee weken)"
           }
         }
       }

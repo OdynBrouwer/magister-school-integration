@@ -594,19 +594,6 @@ def _save_appointment_history(path, history):
     except OSError:
         pass
 
-def _subject_names(value):
-    """Extract subject names from a Magister vak value (dict, list or string)."""
-    if isinstance(value, dict):
-        return [str(n) for n in (value.get("Naam"), value.get("Code")) if n]
-    if isinstance(value, list):
-        out = []
-        for entry in value:
-            out.extend(_subject_names(entry))
-        return out
-    if value:
-        return [str(value)]
-    return []
-
 def main():
     parser = argparse.ArgumentParser(description='Magister info dump')
     parser.add_argument('--debug', '-d', action='store_true', help=argparse.SUPPRESS)
@@ -627,6 +614,7 @@ def main():
     parser.add_argument('--days-back', type=int, default=0, help=argparse.SUPPRESS)
     parser.add_argument('--days-forward', type=int, default=14, help=argparse.SUPPRESS)
     parser.add_argument('--history-file', help=argparse.SUPPRESS)
+    parser.add_argument('--inspect-homework', action='store_true', help=argparse.SUPPRESS)
     args = parser.parse_args()
 
     if not args.config:
@@ -795,6 +783,11 @@ def main():
         afspraken = mg.req("personen", kindid, "afspraken", params)
         wijzigingen = mg.req("personen", kindid, "roosterwijzigingen", params)
 
+        if getattr(args, 'inspect_homework', False):
+            hw = [item for item in afspraken.get("Items", []) if item.get("InfoType", 0) == 1]
+            print(json.dumps(hw[:3], indent=2, ensure_ascii=False, default=str))
+            sys.exit(0)
+
         kind_data["afspraken"] = [
             {
                 "start": datum(item.get("Start") or item.get("Datum")),
@@ -809,6 +802,7 @@ def main():
                 "vak_code": ", ".join(filter(None, ([item.get("Vak", {}).get("Code")] if item.get("Vak") else []) + [v.get("Code") for v in (item.get("Vakken") or [])])),
                 "docent": ", ".join(filter(None, ([item.get("Docent", {}).get("Naam")] if item.get("Docent") else []) + [d.get("Naam") for d in (item.get("Docenten") or [])])),
                 "is_huiswerk": item.get("InfoType", 0) == 1,
+                "is_afgerond": bool(item.get("Afgerond", False)),
                 "is_uitval": "Vervallen" in (infotstr(item.get("Status", 0), AFSPRAAK_STATUS)),
                 "was_afwijkend": _remember_was_afwijkend(appointment_history, kindid, item),
                 "lesuurstart": item.get("LesuurVan"),
@@ -839,18 +833,8 @@ def main():
             for item in wijzigingen.get("Items", [])
         ]
 
-        # Opdrachten ophalen voor huiswerk-filtering
+        # Opdrachten ophalen (losse sensor; niet gebruikt voor huiswerk-afgerond)
         opdr_data = mg.req("personen", kindid, "opdrachten")
-        submitted_opdr = set()
-        for o in opdr_data.get("Items", []):
-            if not o.get("IngeleverdOp"):
-                continue
-            deadline = o.get("InleverenVoor", "")
-            if not deadline:
-                continue
-            date = str(deadline)[:10]
-            for name in _subject_names(o.get("Vak")):
-                submitted_opdr.add((date, name))
 
         # Tel statistieken
         vandaag = datetime.now().strftime('%Y-%m-%d')
@@ -858,20 +842,9 @@ def main():
             a for a in kind_data["afspraken"]
             if a["start"].startswith(vandaag)
         ])
-        kind_data["aantal_huiswerk_totaal"] = len([
-            a for a in kind_data["afspraken"]
-            if a["is_huiswerk"]
-        ])
-        def _is_submitted(a):
-            date = str(a.get("start", ""))[:10]
-            names = [n.strip() for n in str(a.get("vak", "")).split(",") if n.strip()]
-            codes = [c.strip() for c in str(a.get("vak_code", "")).split(",") if c.strip()]
-            return any((date, match) in submitted_opdr for match in names + codes)
-
-        kind_data["aantal_huiswerk"] = len([
-            a for a in kind_data["afspraken"]
-            if a["is_huiswerk"] and not _is_submitted(a)
-        ])
+        huiswerk = [a for a in kind_data["afspraken"] if a["is_huiswerk"]]
+        kind_data["aantal_huiswerk_totaal"] = len(huiswerk)
+        kind_data["aantal_huiswerk"] = len([a for a in huiswerk if not a.get("is_afgerond")])
 
         # Volgende afspraak
         toekomstige_afspraken = [

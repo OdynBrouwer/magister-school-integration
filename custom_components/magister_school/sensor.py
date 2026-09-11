@@ -176,6 +176,8 @@ class KindOverviewSensor(SensorEntity):
             "aantal_afspraken_vandaag": kind_data.get("aantal_afspraken_vandaag", 0),
             "aantal_huiswerk": kind_data.get("aantal_huiswerk", 0),
             "aantal_huiswerk_totaal": kind_data.get("aantal_huiswerk_totaal", 0),
+            "aantal_huiswerk_onafgerond": kind_data.get("aantal_huiswerk", 0),
+            "aantal_huiswerk_afgerond": kind_data.get("aantal_huiswerk_totaal", 0) - kind_data.get("aantal_huiswerk", 0),
             "aantal_uitval": kind_data.get("aantal_uitval", 0),
             "volgende_afspraak": kind_data.get("volgende_afspraak", "Geen"),
             "volgende_vak": kind_data.get("volgende_vak", ""),

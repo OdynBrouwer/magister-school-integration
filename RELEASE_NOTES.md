@@ -1,4 +1,19 @@
-# Release v2.0.5
+# Release v2.0.6
+
+## GitHub release text
+
+Magister School Integration v2.0.6 fixes the homework counter: finished/unfinished homework is now read from the homework item's own `Afgerond` field instead of being derived from the (unrelated) assignments list.
+
+### Fixes
+
+- **Homework (#31)**: the homework sensor now counts finished vs unfinished homework using the `Afgerond` flag that Magister sends on each homework item. The previous version incorrectly derived "finished" by matching against submitted `opdrachten`, which is a different concept and is empty for most accounts.
+- The overview sensor now also exposes `aantal_huiswerk_onafgerond` and `aantal_huiswerk_afgerond`, so cards can show both.
+
+## HACS update text
+
+Fixes the homework finished/unfinished counter: it now uses Magister's `Afgerond` field on the homework item itself.
+
+## Previous release: v2.0.5
 
 ## GitHub release text
 

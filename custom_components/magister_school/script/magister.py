@@ -380,22 +380,20 @@ class Magister:
             print("ERROR Magister wants you to change your password!!")
             return
         if r.get('action') == 'pairfidopromo':
-            d = dict(
-                sessionId= sessioninfo["sessionId"][0],  # from redirect
-                returnUrl= sessioninfo["returnUrl"][0],
-                authCode= authcode,
-                reason = "non-user-verifying-platform-authenticator",
-                userVerifyingPlatformAuthenticator = None,
-            )
+            # Keep the existing username/password/session fields on `d`.
+            d["reason"] = "non-user-verifying-platform-authenticator"
+            d["userVerifyingPlatformAuthenticator"] = None
 
             r = self.httpreq(f"https://{self.magisterserver}/challenges/skip-pair-fido-promo", json.dumps(d))
 
 
-        if r.get('action') == 'soft-token':
+        if r.get('action') in ('soft-token', 'softtoken'):
             totp_secret = getattr(self.args, 'totp_secret', None)
             if not totp_secret:
                 if not getattr(self.args, "json", False):
                     print("ERROR: 2FA (TOTP) required but no totp_secret provided")
+                else:
+                    print("2FA (TOTP) required but no totp_secret provided", file=sys.stderr)
                 return False
             totp_code = generate_totp(totp_secret)
             d["Code"] = totp_code
@@ -406,9 +404,13 @@ class Magister:
             if r.get('action'):
                 if not getattr(self.args, "json", False):
                     print("'%s' requested -> visit website" % r['action'])
+                else:
+                    print("Unhandled login action: '%s'" % r['action'], file=sys.stderr)
                 return False
             if not getattr(self.args, "json", False):
                 print("ERROR '%s'" % r.get('error'))
+            else:
+                print("Login error: %s" % r.get('error'), file=sys.stderr)
             return False
 
         self.logprint("\n---- callback ----")
@@ -568,11 +570,14 @@ def _remember_was_afwijkend(history, kind_id, item):
                 del history[old_key]
     return current or history.get(key, False)
 
-def _load_appointment_history(cache_path):
-    cache_path = Path(cache_path)
-    path = cache_path.with_name(
-        cache_path.name.replace(".magister_auth_cache", ".magister_appointment_history") + ".json"
-    )
+def _load_appointment_history(cache_path, history_file=None):
+    if history_file:
+        path = Path(history_file)
+    else:
+        cache_path = Path(cache_path)
+        path = cache_path.with_name(
+            cache_path.name.replace(".magister_auth_cache", ".magister_appointment_history") + ".json"
+        )
     try:
         with path.open(encoding="utf-8") as fh:
             data = json.load(fh)
@@ -582,6 +587,8 @@ def _load_appointment_history(cache_path):
 
 def _save_appointment_history(path, history):
     try:
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("w", encoding="utf-8") as fh:
             json.dump(history, fh)
     except OSError:
@@ -619,6 +626,7 @@ def main():
     parser.add_argument('--totp-secret', help=argparse.SUPPRESS)
     parser.add_argument('--days-back', type=int, default=0, help=argparse.SUPPRESS)
     parser.add_argument('--days-forward', type=int, default=14, help=argparse.SUPPRESS)
+    parser.add_argument('--history-file', help=argparse.SUPPRESS)
     args = parser.parse_args()
 
     if not args.config:
@@ -678,11 +686,15 @@ def main():
         if not mg.login(args.username, args.password):
             if not args.json:
                 print("Login failed")
-            return
+            else:
+                print("Login failed", file=sys.stderr)
+            sys.exit(1)
         if not mg.access_token or mg.access_token == "":
             if not args.json:
                 print("Login appeared to succeed, but no access token was received.")
-            return
+            else:
+                print("Login appeared to succeed, but no access token was received.", file=sys.stderr)
+            sys.exit(1)
         store_access_token(args.cache, mg.access_token)
 
     # JSON output voor Home Assistant
@@ -696,7 +708,7 @@ def main():
         "activiteiten": {}
     }
 
-    history_path, appointment_history = _load_appointment_history(args.cache)
+    history_path, appointment_history = _load_appointment_history(args.cache, getattr(args, "history_file", None))
 
     d = mg.req("account")
 

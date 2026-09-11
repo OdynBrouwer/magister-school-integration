@@ -96,17 +96,17 @@ Deze functionaliteit maakt gebruik van de **entity registry** en is volledig vei
 ## 📊 Attributen & voorbeelden
 
 Elk kind krijgt een **overzicht-sensor** `sensor.magister_[kind_naam]`
-(bijv. `sensor.magister_tyas_brouwer`). Alle data staat hierin als
+(bijv. `sensor.magister_Odyn_brouwer`). Alle data staat hierin als
 **attributen**, zodat je alles in templates en automations kunt gebruiken.
 
 ### Basisinfo
 
 | Attribuut | Voorbeeld | Beschrijving |
 |---|---|---|
-| `naam` | `Tyas Brouwer` | Volledige naam |
-| `stamnummer` | `128101` | Magister stamnummer |
-| `geboortedatum` | `2010-07-11` | Geboortedatum |
-| `klas` | `Gymnasium 5b` | Huidige klas (uit actieve aanmelding) |
+| `naam` | `Odyn Brouwer` | Volledige naam |
+| `stamnummer` | `12552` | Magister stamnummer |
+| `geboortedatum` | `2010-07-20` | Geboortedatum |
+| `klas` | `Gymnasium 3b` | Huidige klas (uit actieve aanmelding) |
 | `profiel` | `NT` | Profiel (alleen bovenbouw) |
 
 ### Tellingen
@@ -202,12 +202,12 @@ Elk kind krijgt een **overzicht-sensor** `sensor.magister_[kind_naam]`
 ### Template voorbeelden
 
 ```jinja2
-Klas: {{ state_attr('sensor.magister_tyas_brouwer', 'klas') }}
-Profiel: {{ state_attr('sensor.magister_tyas_brouwer', 'profiel') }}
-Open huiswerk: {{ state_attr('sensor.magister_tyas_brouwer', 'aantal_huiswerk') }}
+Klas: {{ state_attr('sensor.magister_Odyn_brouwer', 'klas') }}
+Profiel: {{ state_attr('sensor.magister_Odyn_brouwer', 'profiel') }}
+Open huiswerk: {{ state_attr('sensor.magister_Odyn_brouwer', 'aantal_huiswerk') }}
 
 {# Nieuwste cijfer dit schooljaar #}
-{% set v = state_attr('sensor.magister_tyas_brouwer', 'voortgangscijfers')
+{% set v = state_attr('sensor.magister_Odyn_brouwer', 'voortgangscijfers')
            | selectattr('ingevoerd_op')
            | sort(attribute='ingevoerd_op', reverse=true) | list %}
 {% if v %}
@@ -215,7 +215,7 @@ Open huiswerk: {{ state_attr('sensor.magister_tyas_brouwer', 'aantal_huiswerk') 
 {% endif %}
 
 {# Aantal ongeoorloofde absenties #}
-{{ state_attr('sensor.magister_tyas_brouwer', 'absenties')
+{{ state_attr('sensor.magister_Odyn_brouwer', 'absenties')
    | selectattr('geoorloofd', 'eq', false) | list | count }}
 ```
 
@@ -224,9 +224,9 @@ Open huiswerk: {{ state_attr('sensor.magister_tyas_brouwer', 'aantal_huiswerk') 
 ```yaml
 template:
   - sensor:
-      - name: "Tyas gemiddelde dit jaar"
+      - name: "Odyn gemiddelde dit jaar"
         state: >
-          {% set c = state_attr('sensor.magister_tyas_brouwer', 'voortgangscijfers')
+          {% set c = state_attr('sensor.magister_Odyn_brouwer', 'voortgangscijfers')
                      | selectattr('telt_mee', 'eq', true)
                      | selectattr('cijfer') | list %}
           {% if c %}
@@ -244,11 +244,11 @@ automation:
   - alias: "Nieuw cijfer"
     trigger:
       - platform: state
-        entity_id: sensor.magister_tyas_brouwer
+        entity_id: sensor.magister_Odyn_brouwer
     condition:
       - condition: template
         value_template: >
-          {{ (state_attr('sensor.magister_tyas_brouwer', 'voortgangscijfers') | length) >
+          {{ (state_attr('sensor.magister_Odyn_brouwer', 'voortgangscijfers') | length) >
              (trigger.from_state.attributes.get('voortgangscijfers', []) | length) }}
     action:
       - service: notify.mobile_app
@@ -263,11 +263,11 @@ automation:
       at: "18:00:00"
     condition:
       condition: template
-      value_template: "{{ states('sensor.magister_tyas_brouwer_huiswerk') | int > 0 }}"
+      value_template: "{{ states('sensor.magister_Odyn_brouwer_huiswerk') | int > 0 }}"
     action:
       service: notify.mobile_app
       data:
-        message: "Nog {{ states('sensor.magister_tyas_brouwer_huiswerk') }} huiswerk items open!"
+        message: "Nog {{ states('sensor.magister_Odyn_brouwer_huiswerk') }} huiswerk items open!"
 ```
 
 ## 🎨 Lovelace Card

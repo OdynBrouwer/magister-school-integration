@@ -63,7 +63,7 @@ Je kunt ook meerdere accounts tegelijk configureren zonder conflicts!
 Na installatie worden de volgende sensors aangemaakt:
 
 ### Hoofd Sensor
-- `sensor.magister_main_data` - Overzicht van alle data
+- `sensor.magister_data` - Laatste update-tijdstip van de integratie
 
 ### Per Kind Sensors
 - `sensor.magister_[kind_naam]` - Compleet overzicht
@@ -92,6 +92,183 @@ Vanaf versie **1.x.x** (of: *in de volgende release*) voert de integratie **auto
 > Verwijder oude entities handmatig via **Settings → Devices & Services → Entities**, of herstart Home Assistant om de automatische cleanup te activeren.
 
 Deze functionaliteit maakt gebruik van de **entity registry** en is volledig veilig.
+
+## 📊 Attributen & voorbeelden
+
+Elk kind krijgt een **overzicht-sensor** `sensor.magister_[kind_naam]`
+(bijv. `sensor.magister_tyas_brouwer`). Alle data staat hierin als
+**attributen**, zodat je alles in templates en automations kunt gebruiken.
+
+### Basisinfo
+
+| Attribuut | Voorbeeld | Beschrijving |
+|---|---|---|
+| `naam` | `Tyas Brouwer` | Volledige naam |
+| `stamnummer` | `128101` | Magister stamnummer |
+| `geboortedatum` | `2010-07-11` | Geboortedatum |
+| `klas` | `Gymnasium 5b` | Huidige klas (uit actieve aanmelding) |
+| `profiel` | `NT` | Profiel (alleen bovenbouw) |
+
+### Tellingen
+
+| Attribuut | Beschrijving |
+|---|---|
+| `aantal_afspraken_vandaag` | Aantal afspraken vandaag |
+| `aantal_huiswerk` / `aantal_huiswerk_onafgerond` | Open (niet afgerond) huiswerk |
+| `aantal_huiswerk_totaal` | Totaal huiswerk (open + afgerond) |
+| `aantal_huiswerk_afgerond` | Afgerond huiswerk |
+| `aantal_uitval` | Vervallen lessen |
+
+### Schooltijden
+
+| Attribuut | Voorbeeld |
+|---|---|
+| `school_start_vandaag` | `08:35` |
+| `school_einde_vandaag` | `15:15` |
+| `volgende_schooldag` | `2026-09-14` |
+| `volgende_schooldag_start` | `08:35` |
+| `volgende_schooldag_einde` | `14:25` |
+| `volgende_afspraak` | `2026-09-14 08:35:00` |
+| `volgende_vak` | `Natuurkunde` |
+| `lessen_vandaag` | Lijst met lessen van vandaag |
+
+### Afspraken & roosterwijzigingen
+
+`afspraken` en `wijzigingen` zijn lijsten. Elk item bevat:
+
+| Veld | Voorbeeld | Beschrijving |
+|---|---|---|
+| `start` / `einde` | `2026-09-14 08:35:00` | Begin- en eindtijd |
+| `status` | `Les` | Status-tekst |
+| `soort` | `Les` / `Algemeen` | Soort afspraak |
+| `omschrijving` | `wisb - wld - g5.wisb1` | Vak - docent - groep |
+| `opmerking` | `Neem boek mee` | Extra opmerking |
+| `inhoud` | `Maak opgave 25...` | Huiswerk-inhoud (zonder HTML) |
+| `is_online` | `true` / `false` | Online les |
+| `duurt_hele_dag` | `true` / `false` | Duurt de hele dag |
+| `lokaal` | `440` | Lokaal |
+| `vak` | `Wiskunde B` | Vaknaam |
+| `vak_id` | `12111` | Vak-Id |
+| `docent` | `Willems` | Docentnaam |
+| `docentcode` | `WLD` | Docentcode |
+| `is_huiswerk` | `true` / `false` | Heeft huiswerk |
+| `is_afgerond` | `true` / `false` | Huiswerk afgerond |
+| `is_uitval` | `true` / `false` | Les vervallen |
+| `was_afwijkend` | `true` / `false` | Les gewijzigd |
+| `lesuurstart` / `lesuureinde` | `1` | Lesuren |
+
+### Cijfers
+
+`cijfers` (recente cijfers):
+
+| Veld | Voorbeeld |
+|---|---|
+| `vak` | `ne` |
+| `omschrijving` | `Nulmeting werkwoordspelling` |
+| `waarde` | `6,0` |
+| `weegfactor` | `0` |
+| `ingevoerd_op` | `2026-09-02 14:54:14` |
+
+`voortgangscijfers` (volledige cijfers van het huidige schooljaar):
+
+| Veld | Voorbeeld |
+|---|---|
+| `lesperiode` | `2627` |
+| `vak` | `ne` |
+| `vak_id` | `14478` |
+| `kolom` | `ne101` |
+| `omschrijving` | `so/pw` |
+| `periode` | `per1` |
+| `waarde` | `6,0` |
+| `cijfer` | `6` |
+| `weegfactor` | `1` |
+| `is_voldoende` | `true` / `false` |
+| `telt_mee` | `true` / `false` |
+| `moet_inhalen` | `true` / `false` |
+| `vrijstelling` | `true` / `false` |
+| `ingevoerd_op` | `2026-09-02 14:54:14` |
+
+### Absenties
+
+| Veld | Voorbeeld | Beschrijving |
+|---|---|---|
+| `start` | `2025-09-18 00:00:00` | Datum |
+| `omschrijving` | `Ongeoorloofd afwezig` | Reden |
+| `afspraak` | `ml - brt - g2c` | Gekoppelde les |
+| `geoorloofd` | `true` / `false` | Geoorloofd? |
+| `code` | `oa` / `BV` / `HV` / `tl` | Absentie-code |
+| `lesuur` | `1` | Lesuur |
+
+### Template voorbeelden
+
+```jinja2
+Klas: {{ state_attr('sensor.magister_tyas_brouwer', 'klas') }}
+Profiel: {{ state_attr('sensor.magister_tyas_brouwer', 'profiel') }}
+Open huiswerk: {{ state_attr('sensor.magister_tyas_brouwer', 'aantal_huiswerk') }}
+
+{# Nieuwste cijfer dit schooljaar #}
+{% set v = state_attr('sensor.magister_tyas_brouwer', 'voortgangscijfers')
+           | selectattr('ingevoerd_op')
+           | sort(attribute='ingevoerd_op', reverse=true) | list %}
+{% if v %}
+  Laatste cijfer: {{ v[0].vak|upper }} {{ v[0].waarde }} ({{ v[0].omschrijving }})
+{% endif %}
+
+{# Aantal ongeoorloofde absenties #}
+{{ state_attr('sensor.magister_tyas_brouwer', 'absenties')
+   | selectattr('geoorloofd', 'eq', false) | list | count }}
+```
+
+### Voorbeeld template sensor
+
+```yaml
+template:
+  - sensor:
+      - name: "Tyas gemiddelde dit jaar"
+        state: >
+          {% set c = state_attr('sensor.magister_tyas_brouwer', 'voortgangscijfers')
+                     | selectattr('telt_mee', 'eq', true)
+                     | selectattr('cijfer') | list %}
+          {% if c %}
+            {{ ((c | map(attribute='cijfer') | map('float') | sum) / (c | length)) | round(1) }}
+          {% else %}
+            0
+          {% endif %}
+```
+
+### Automations
+
+```yaml
+# Notificatie bij een nieuw cijfer
+automation:
+  - alias: "Nieuw cijfer"
+    trigger:
+      - platform: state
+        entity_id: sensor.magister_tyas_brouwer
+    condition:
+      - condition: template
+        value_template: >
+          {{ (state_attr('sensor.magister_tyas_brouwer', 'voortgangscijfers') | length) >
+             (trigger.from_state.attributes.get('voortgangscijfers', []) | length) }}
+    action:
+      - service: notify.mobile_app
+        data:
+          message: "Er is een nieuw cijfer!"
+
+# Herinnering voor huiswerk
+automation:
+  - alias: "Huiswerk herinnering"
+    trigger:
+      platform: time
+      at: "18:00:00"
+    condition:
+      condition: template
+      value_template: "{{ states('sensor.magister_tyas_brouwer_huiswerk') | int > 0 }}"
+    action:
+      service: notify.mobile_app
+      data:
+        message: "Nog {{ states('sensor.magister_tyas_brouwer_huiswerk') }} huiswerk items open!"
+```
 
 ## 🎨 Lovelace Card
 

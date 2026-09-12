@@ -17,6 +17,14 @@ Integreer Magister schoolinformatie direct in je Home Assistant dashboard. Toon 
 - **🧹 Automatische cleanup** – Verwijdert `_1`, `_2` etc. na updates
 - **🔐 Multi-Account Support** - Gebruik meerdere accounts tegelijk zonder conflicts
 
+## ✨ Nieuw in v2.1.0
+
+- **Klas & profiel** per kind (`klas`, `profiel`)
+- **Voortgangscijfers** van het huidige schooljaar (`voortgangscijfers`)
+- **Absenties** met `geoorloofd`, `code` en `lesuur`
+- **Les-extra's** in afspraken: `opmerking`, `is_online`, `duurt_hele_dag`, `docentcode`, `vak_id`
+- Zie [📊 Attributen & voorbeelden](#-attributen--voorbeelden) voor alle details
+
 ## 📋 Vereisten
 
 - Home Assistant 2023.8.0 of hoger

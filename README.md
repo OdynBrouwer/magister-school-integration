@@ -35,12 +35,7 @@ Integreer Magister schoolinformatie direct in je Home Assistant dashboard. Toon 
 
 ### Via HACS (Aanbevolen)
 
-1. Ga naar **HACS** → **Integrations**
-2. Klik op **+** (Custom repositories)
-3. Voeg toe: `https://github.com/OdynBrouwer/magister-school-integration`
-4. Selecteer categorie: **Integration**
-5. Klik **Install**
-6. Herstart Home Assistant
+[![Open deze repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=OdynBrouwer&repository=magister-school-integration&category=integration)
 
 ### Handmatige Installatie
 

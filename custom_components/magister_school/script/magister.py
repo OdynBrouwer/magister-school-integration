@@ -455,6 +455,18 @@ class Magister:
         response = self.httpreq(f"https://{self.schoolserver}/api/{path}{qs}")
         if self._raw_dump is not None:
             self._raw_dump.setdefault(path + qs, response)
+
+        # Magister antwoordt bij een storing of een verlopen sessie soms met HTML
+        # of een lege body in plaats van JSON. Zo'n antwoord is geen dict en laat
+        # de aanroeper crashen ('bytes' object has no attribute 'get').
+        if not isinstance(response, dict):
+            snippet = response[:120] if isinstance(response, (bytes, str)) else response
+            print(
+                f"! geen JSON-antwoord op /{path} - leeg resultaat gebruikt: {snippet!r}",
+                file=sys.stderr,
+            )
+            return {}
+
         return response
 
     def getlink(self, link):
@@ -807,6 +819,15 @@ def main():
 
         afspraken = mg.req("personen", kindid, "afspraken", params)
         wijzigingen = mg.req("personen", kindid, "roosterwijzigingen", params)
+
+        # req() geeft al een lege dict terug bij een onbruikbaar antwoord; hier
+        # nogmaals expliciet zodat een run nooit klapt op een ontbrekend rooster.
+        if not isinstance(afspraken, dict):
+            print("! /afspraken gaf geen JSON terug - lege lijst gebruikt", file=sys.stderr)
+            afspraken = {}
+        if not isinstance(wijzigingen, dict):
+            print("! /roosterwijzigingen gaf geen JSON terug - lege lijst gebruikt", file=sys.stderr)
+            wijzigingen = {}
 
         if getattr(args, 'inspect_homework', False):
             hw = [item for item in afspraken.get("Items", []) if item.get("InfoType", 0) == 1]

@@ -309,3 +309,48 @@ class TestVoortgangscijfers:
         with open(sensor_path, encoding="utf-8") as f:
             content = f.read()
         assert '"voortgangscijfers"' in content
+
+
+class TestOnverwachtAntwoord:
+    """Magister antwoordt soms met HTML of een lege body in plaats van JSON.
+
+    Dat gaf 'bytes' object has no attribute 'get' en liet de sensor-run crashen.
+    """
+
+    def _magister_met_antwoord(self, response, **attrs):
+        mg = magister.Magister.__new__(magister.Magister)
+        mg._raw_dump = None
+        mg.schoolserver = "example.invalid"
+        mg.httpreq = lambda url: response
+        mg.logprint = lambda *a, **k: None
+        for key, value in attrs.items():
+            setattr(mg, key, value)
+        return mg
+
+    def test_html_in_plaats_van_json_geeft_lege_dict(self):
+        mg = self._magister_met_antwoord(b"<html>503 Service Unavailable</html>")
+        assert mg.req("personen", "123", "afspraken") == {}
+
+    def test_lege_body_geeft_lege_dict(self):
+        mg = self._magister_met_antwoord(b"")
+        assert mg.req("personen", "123", "roosterwijzigingen") == {}
+
+    def test_none_antwoord_geeft_lege_dict(self):
+        mg = self._magister_met_antwoord(None)
+        assert mg.req("personen", "123", "afspraken") == {}
+
+    def test_echte_json_gaat_onveranderd_door(self):
+        data = {"Items": [{"Id": 1}]}
+        mg = self._magister_met_antwoord(data)
+        assert mg.req("personen", "123", "afspraken") == data
+
+    def test_raw_dump_blijft_gevuld_bij_fout_antwoord(self):
+        mg = self._magister_met_antwoord(b"kapot", _raw_dump={})
+        mg.req("personen", "123", "afspraken")
+        assert mg._raw_dump, "het foute antwoord moet in de raw dump belanden"
+
+    def test_main_guardt_afspraken_en_wijzigingen(self):
+        with open(script_path, encoding="utf-8") as f:
+            content = f.read()
+        assert "if not isinstance(afspraken, dict)" in content
+        assert "if not isinstance(wijzigingen, dict)" in content

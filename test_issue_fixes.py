@@ -3,6 +3,7 @@ import sys
 import os
 import importlib.util
 import pytest
+from types import SimpleNamespace
 
 # Import magister.py script directly
 script_path = os.path.join(
@@ -309,6 +310,30 @@ class TestVoortgangscijfers:
         with open(sensor_path, encoding="utf-8") as f:
             content = f.read()
         assert '"voortgangscijfers"' in content
+
+
+@pytest.mark.parametrize("response, expected", [
+    ({"Omschrijving": "<p>Lesstof:</p><ul><li>Learn</li><li>Practice</li></ul>"},
+     "Lesstof:\n• Learn\n• Practice"),
+    (b"<html>503</html>", "Lesstof:"),
+])
+def test_studiewijzer_full_text(monkeypatch, response, expected):
+    args = SimpleNamespace(xsrftoken=None, accesstoken=None, magisterserver="example.invalid",
+                           schoolserver="example.invalid", debug=False, dump_raw=True)
+    mg = magister.Magister(args)
+    mg.access_token = "current-session"
+
+    def request(client, url):
+        assert client is not mg and client.opener is not mg.opener
+        assert client.access_token == mg.access_token
+        assert url == "https://example.invalid/api/leerlingen/1/studiewijzers/2/onderdelen/3?gebruikMappenStructuur=true"
+        return response
+
+    monkeypatch.setattr(magister.Magister, "httpreq", request)
+    result = magister.studiewijzer_onderdelen(mg, 1, 2, [{"Id": 3, "Titel": "Week 1", "Omschrijving": "Lesstof:"}])
+    assert result[0]["Titel"] == "Week 1"
+    assert magister.dehtml(result[0]["Omschrijving"]).strip() == expected
+    assert len(mg._raw_dump) == 1
 
 
 class TestOnverwachtAntwoord:

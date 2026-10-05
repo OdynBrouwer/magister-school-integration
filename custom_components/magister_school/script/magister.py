@@ -15,6 +15,7 @@ import base64
 import time as time_mod
 from pathlib import Path
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 
 def dehtml(html):
     """
@@ -22,7 +23,8 @@ def dehtml(html):
     """
     if html is None: return
 
-    html = re.sub(r"</p>|<br>", "\n", html)
+    html = re.sub(r"</(?:p|li|ul|ol)>|<br\s*/?>", "\n", html, flags=re.IGNORECASE)
+    html = re.sub(r"<li\b[^>]*>", "• ", html, flags=re.IGNORECASE)
     html = re.sub(r"</td>\s*<td[^<>]*>", "\t", html)
     html = re.sub(r"</tr>", "\n", html)
     # special handling for <a href>: description first, then link.
@@ -39,6 +41,25 @@ def dehtml(html):
     html = re.sub(r"""['"]?(http\S+?)['"]?(?:\s+['"]?\1['"]?)+""", lambda m:m[1], html, flags=re.DOTALL)
     html = re.sub(r"""['"]?(http\S+?)['"]?(?:\s+['"]?\1['"]?)+""", lambda m:m[1], html, flags=re.DOTALL)
     return html
+
+def studiewijzer_onderdelen(mg, kind_id, studiewijzer_id, onderdelen):
+    """Fetch full section text; the overview only contains previews."""
+    def fetch(onderdeel):
+        # Each worker needs its own opener, but shares the current login.
+        client = Magister(mg.args)
+        client.access_token = mg.access_token
+        client.xsrftoken = mg.xsrftoken
+        client._raw_dump = mg._raw_dump
+        detail = client.req(
+            "leerlingen", kind_id, "studiewijzers", studiewijzer_id,
+            "onderdelen", onderdeel["Id"], {"gebruikMappenStructuur": "true"},
+        )
+        return {**onderdeel, **detail}
+
+    # Sequential requests can exceed the integration's 30-second timeout.
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        return list(pool.map(fetch, onderdelen))
+
 
 def datum(ts):
     """
@@ -1017,7 +1038,7 @@ def main():
                         "titel": o.get("Titel", ""),
                         "omschrijving": dehtml(o.get("Omschrijving", ""))
                     }
-                    for o in switem["Onderdelen"]["Items"]
+                    for o in studiewijzer_onderdelen(mg, kindid, sw["Id"], switem["Onderdelen"]["Items"])
                 ]
             })
 

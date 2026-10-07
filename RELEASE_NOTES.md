@@ -1,3 +1,11 @@
+# Release v2.2.1b0 (beta)
+
+## GitHub release text
+
+- **Recorder (#39)**: omvangrijke attributen worden nu via `_unrecorded_attributes` uitgesloten van de recorder-historie, zodat de 16 KB-waarschuwing verdwijnt zonder handmatige `recorder.exclude`. Met dank aan @Niek.
+
+## Previous release: v2.2.0
+
 # Release v2.2.0
 
 ## GitHub release text

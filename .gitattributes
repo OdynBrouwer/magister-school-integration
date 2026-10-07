@@ -8,6 +8,7 @@
 *.yml text eol=lf
 *.md text eol=lf
 *.txt text eol=lf
+*.sh text eol=lf
 
 # Binary files
 *.png binary

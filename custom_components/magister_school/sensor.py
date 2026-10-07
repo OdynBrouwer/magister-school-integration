@@ -11,6 +11,27 @@ from .coordinator import MagisterDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
+# Attribuutnamen die veel data bevatten; deze hoeven niet in de recorder-historie.
+_UNRECORDED_ATTRS = frozenset({
+    "kinderen",
+    "afspraken",
+    "wijzigingen",
+    "aanmeldingen",
+    "cijfers",
+    "voortgangscijfers",
+    "opdrachten",
+    "absenties",
+    "studiewijzers",
+    "activiteiten",
+    "lessen_vandaag",
+    "afspraken_vandaag",
+    "huiswerk_items",
+    "laatste_3_cijfers",
+    "open_opdrachten",
+    "recente_absenties",
+    "uitval",
+})
+
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -90,6 +111,7 @@ def create_kind_sensors(coordinator, kind_naam):
 
 class KindOverviewSensor(SensorEntity):
     """Sensor met overzicht van alle data voor templates."""
+    _unrecorded_attributes = _UNRECORDED_ATTRS
     
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
@@ -221,6 +243,7 @@ class KindOverviewSensor(SensorEntity):
 
 class MagisterMainSensor(SensorEntity):
     """Hoofd sensor met alle Magister data."""
+    _unrecorded_attributes = _UNRECORDED_ATTRS
 
     def __init__(self, coordinator, name):
         self._coordinator = coordinator
@@ -264,6 +287,7 @@ class MagisterMainSensor(SensorEntity):
 # Basis Kind Sensors
 class KindAantalAfsprakenSensor(SensorEntity):
     """Sensor voor aantal afspraken vandaag."""
+    _unrecorded_attributes = _UNRECORDED_ATTRS
     
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
@@ -309,6 +333,7 @@ class KindAantalAfsprakenSensor(SensorEntity):
 
 class KindAantalHuiswerkSensor(SensorEntity):
     """Sensor voor aantal huiswerk items."""
+    _unrecorded_attributes = _UNRECORDED_ATTRS
     
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
@@ -406,6 +431,7 @@ class KindVolgendeAfspraakSensor(SensorEntity):
 # Detail Sensors
 class KindCijfersSensor(SensorEntity):
     """Sensor voor cijfers overzicht."""
+    _unrecorded_attributes = _UNRECORDED_ATTRS
     
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
@@ -452,6 +478,7 @@ class KindCijfersSensor(SensorEntity):
 
 class KindAfsprakenSensor(SensorEntity):
     """Sensor voor alle afspraken."""
+    _unrecorded_attributes = _UNRECORDED_ATTRS
     
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
@@ -502,6 +529,7 @@ class KindAfsprakenSensor(SensorEntity):
 
 class KindRoosterWijzigingenSensor(SensorEntity):
     """Sensor voor roosterwijzigingen."""
+    _unrecorded_attributes = _UNRECORDED_ATTRS
     
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
@@ -548,6 +576,7 @@ class KindRoosterWijzigingenSensor(SensorEntity):
 
 class KindOpdrachtenSensor(SensorEntity):
     """Sensor voor opdrachten."""
+    _unrecorded_attributes = _UNRECORDED_ATTRS
     
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
@@ -594,6 +623,7 @@ class KindOpdrachtenSensor(SensorEntity):
 
 class KindAbsentiesSensor(SensorEntity):
     """Sensor voor absenties."""
+    _unrecorded_attributes = _UNRECORDED_ATTRS
     
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
@@ -640,6 +670,7 @@ class KindAbsentiesSensor(SensorEntity):
 
 class KindStudiewijzersSensor(SensorEntity):
     """Sensor voor studiewijzers."""
+    _unrecorded_attributes = _UNRECORDED_ATTRS
     
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
@@ -685,6 +716,7 @@ class KindStudiewijzersSensor(SensorEntity):
 
 class KindActiviteitenSensor(SensorEntity):
     """Sensor voor activiteiten."""
+    _unrecorded_attributes = _UNRECORDED_ATTRS
     
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
@@ -730,6 +762,7 @@ class KindActiviteitenSensor(SensorEntity):
 
 class KindAanmeldingenSensor(SensorEntity):
     """Sensor voor aanmeldingen."""
+    _unrecorded_attributes = _UNRECORDED_ATTRS
 
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator

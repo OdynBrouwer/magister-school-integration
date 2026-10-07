@@ -760,6 +760,7 @@ def main():
         kinderen = [{
             "Id": d["Persoon"]["Id"],
             "Roepnaam": d["Persoon"].get("Roepnaam", ""),
+            "Tussenvoegsel": d["Persoon"].get("Tussenvoegsel", ""),
             "Achternaam": d["Persoon"].get("Achternaam", ""),
             "Geboortedatum": d["Persoon"].get("Geboortedatum", ""),
             "Stamnummer": d["Persoon"].get("Stamnummer", "")
@@ -769,7 +770,10 @@ def main():
         kinderen = k.get("Items", [])
 
     for kind in kinderen:
-        kind_naam = f"{kind.get('Roepnaam', '')} {kind.get('Achternaam', '')}"
+        kind_naam = " ".join(
+            v for k in ('Roepnaam', 'Tussenvoegsel', 'Achternaam')
+            if (v := kind.get(k, ''))
+        )
         kind_data = {
             "naam": kind_naam,
             "stamnummer": kind.get('Stamnummer', ''),

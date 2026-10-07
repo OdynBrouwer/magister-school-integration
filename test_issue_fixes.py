@@ -416,3 +416,19 @@ class TestUitvalInWijzigingen:
             content = f.read()
         assert "wijziging_ids" in content
         assert '"Vervallen" not in infotstr(item.get("Status"' in content
+
+
+class TestUnrecordedAttributes:
+    """#39 follow-up — omvangrijke attributen uitsluiten van de recorder."""
+
+    def test_unrecorded_attributes_gedefinieerd(self):
+        sensor_path = os.path.join(
+            os.path.dirname(__file__),
+            "custom_components", "magister_school", "sensor.py"
+        )
+        with open(sensor_path, encoding="utf-8") as f:
+            content = f.read()
+        assert "_UNRECORDED_ATTRS = frozenset({" in content
+        assert content.count("_unrecorded_attributes = _UNRECORDED_ATTRS") >= 12
+        assert '"voortgangscijfers"' in content
+        assert '"afspraken"' in content

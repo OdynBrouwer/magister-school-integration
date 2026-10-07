@@ -19,3 +19,8 @@ dist/
 raw_dump.json
 LOGS HA/
 .magister*
+
+# Persoonlijke test-/deploybestanden (niet op GitHub)
+test_trevianum*.py
+readmeforum.md
+.local/config.sh

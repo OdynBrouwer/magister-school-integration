@@ -51,9 +51,10 @@ Integreer Magister schoolinformatie direct in je Home Assistant dashboard. Toon 
 2. Klik op **+ Add Integration**
 3. Zoek naar **"Magister School"**
 4. Voer je inloggegevens in:
-   - **School**: Je schoolnaam (bijv. `zuidermavo`)
+   - **School**: Je schoolnaam (bijv. `zuidermavo`, zónder `.magister.net`)
    - **Gebruikersnaam**: Je Magister gebruikersnaam
    - **Wachtwoord**: Je Magister wachtwoord
+   - **2FA/TOTP-secret** (optioneel): alleen nodig bij 2FA. Vul hier de **secret key** in (de lange base32-string uit je authenticator-app, bijv. via ProtonPass of Aegis), **niet** de 6-cijferige code zelf.
 
 ### 👤 Student vs Ouder Accounts
 
@@ -283,32 +284,6 @@ Voor een mooie dashboard weergave, installeer de [Magister School Lovelace Card]
 ```yaml
 type: custom:magister-school-card
 entity: sensor.magister_naam_kind
-
-
-# Notificatie bij nieuwe cijfers
-automation:
-  - alias: "Notificatie bij nieuwe cijfers"
-    trigger:
-      platform: state
-      entity_id: sensor.magister_jan_cijfers
-    action:
-      service: notify.mobile_app
-      data:
-        message: "Er is een nieuw cijfer toegevoegd!"
-        
-# Herinnering voor huiswerk
-automation:
-  - alias: "Huiswerk herinnering"
-    trigger:
-      platform: time
-      at: "18:00:00"
-    condition:
-      condition: template
-      value_template: "{{ states('sensor.magister_jan_huiswerk') | int > 0 }}"
-    action:
-      service: notify.mobile_app
-      data:
-        message: "Nog {{ states('sensor.magister_jan_huiswerk') }} huiswerk items open!"
 ```
 ## 🐛 Problemen Oplossen
 
@@ -338,7 +313,7 @@ Bijdragen zijn welkom! Voel je vrij om:
 - Pull requests in te dienen voor verbeteringen
 - De documentatie te verbeteren
 
-## �️ Ontwikkeling & HACS-standaarden
+## 🛠️ Ontwikkeling & HACS-standaarden
 
 De repository volgt de HACS- en Home Assistant-validatieprocessen:
 
@@ -350,42 +325,15 @@ De repository volgt de HACS- en Home Assistant-validatieprocessen:
   `.ruff.toml`) om bestaande code niet onnodig te herschrijven.
 
 Voor indiening in de **HACS-defaultstore** is nog nodig:
-- `logo.png` en `icon.png` in een `brand/`-map
+- `logo.png` (512×512) in een `brand/`-map — de `icon.png` is al aanwezig
 - Een formele HACS-aanvraag via de HACS-documentatie
 
-## 🗃️ Database Optimalisatie
+## 🗃️ Database
 
-De overzicht-sensor en de afspraken-sensors bevatten veel data (alle afspraken,
-voortgangscijfers, absenties, etc.). Vanaf **v2.2.1** sluit de integratie deze
-omvangrijke attributen **automatisch** uit van de recorder-historie via
-`_unrecorded_attributes` — de data blijft gewoon live beschikbaar voor de card
-en templates, maar de recorder slaat alleen de historie niet meer op.
-
-Daarmee verdwijnt de waarschuwing:
-
-```
-State attributes for sensor.magister_... exceed maximum size of 16384 bytes.
-Attributes will not be stored
-```
-
-Dit is **geen bug**: de data blijft live beschikbaar; alleen de *historie in de
-database* wordt niet opgeslagen. Wil je de sensors tóch volledig uitsluiten van
-de recorder, dan kan dat nog steeds:
-
-```yaml
-# configuration.yaml
-recorder:
-  exclude:
-    entity_globs:
-      - sensor.magister_*
-```
-
-Gebruik je liever een vaste lijst, dan vind je alle entities zo:
-
-```
-{% set entities = states.sensor | selectattr('entity_id', 'match', 'sensor.magister_.*') | map(attribute='entity_id') | list %}
-{{ entities }}
-```
+Omvangrijke attributen worden sinds **v2.2.1** automatisch uitgesloten van de
+recorder-historie via `_unrecorded_attributes`. De data blijft live beschikbaar
+voor de card en templates; alleen de historie in de database wordt overgeslagen.
+Geen handmatige `recorder.exclude` meer nodig.
 
 
 ## 📄 Licentie

@@ -1,3 +1,16 @@
+# Release v2.2.0b0 (beta)
+
+## GitHub release text
+
+Nieuwe features en verbeteringen:
+
+- **Studiewijzers (#41)**: volledige sectietekst i.p.v. previews, met behoud van lijstopmaak; gelijktijdige requests beperkt tot 4.
+- **Kindnamen (#38)**: het `Tussenvoegsel` wordt nu meegenomen (bv. "Jan van Tilburg" i.p.v. "Jan Tilburg").
+- **Uitval in wijzigingen (#37)**: vervallen lessen uit de afspraken worden nu ook aan de roosterwijzigingen toegevoegd.
+- **Docs (#39)**: uitleg over de 16 KB recorder-limiet + `entity_globs` exclude-voorbeeld.
+
+## Previous release: v2.1.1b0
+
 # Release v2.0.6
 
 ## GitHub release text

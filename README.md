@@ -350,26 +350,35 @@ Voor indiening in de **HACS-defaultstore** is nog nodig:
 - `logo.png` en `icon.png` in een `brand/`-map
 - Een formele HACS-aanvraag via de HACS-documentatie
 
-## �🗃️ Database Optimalisatie
+## 🗃️ Database Optimalisatie
 
-De sensors bevatten veel data. Voeg deze toe aan je recorder exclude om database issues te voorkomen:
- 
-Gebruik deze template om alle Magister sensors automatisch te vinden:
+De overzicht-sensor en de afspraken-sensors bevatten veel data (alle afspraken,
+voortgangscijfers, absenties, etc.). Home Assistant's recorder slaat attributen
+groter dan **16 KB** daarom niet op en logt dan een waarschuwing als:
+
 ```
-    {% set entities = states.sensor | selectattr('entity_id', 'match', 'sensor.magister_.*') | map(attribute='entity_id') | list %}
-    {{ entities }}
+State attributes for sensor.magister_... exceed maximum size of 16384 bytes.
+Attributes will not be stored
 ```
-Voorbeeld:
+
+Dit is **geen bug** en heeft geen invloed op de werking: de data blijft gewoon
+live beschikbaar voor de card en templates; alleen de *historie in de database*
+wordt niet opgeslagen. Om de waarschuwing te stoppen kun je de Magister-sensors
+uitsluiten van de recorder:
+
 ```yaml
 # configuration.yaml
 recorder:
-  purge_keep_days: 2
-  commit_interval: 30
-  auto_purge: true
   exclude:
-    entities:
-      - sensor.magister_agenda_vandaag_en_morgen
-      - sensor.magister_data
+    entity_globs:
+      - sensor.magister_*
+```
+
+Gebruik je liever een vaste lijst, dan vind je alle entities zo:
+
+```
+{% set entities = states.sensor | selectattr('entity_id', 'match', 'sensor.magister_.*') | map(attribute='entity_id') | list %}
+{{ entities }}
 ```
 
 

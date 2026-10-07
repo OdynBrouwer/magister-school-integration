@@ -379,3 +379,40 @@ class TestOnverwachtAntwoord:
             content = f.read()
         assert "if not isinstance(afspraken, dict)" in content
         assert "if not isinstance(wijzigingen, dict)" in content
+
+
+class TestUitvalInWijzigingen:
+    """Issue #37 — vervallen lessen ook in wijzigingen opnemen."""
+
+    def test_map_rooster_item_herkent_uitval(self):
+        item = {
+            "Id": 5,
+            "Start": "2026-09-18T06:35:00.0000000Z",
+            "Einde": "2026-09-18T07:25:00.0000000Z",
+            "Status": 5,
+            "Type": 13,
+            "Omschrijving": "wisb",
+            "Lokatie": "440",
+        }
+        result = magister._map_rooster_item(item, {}, 1)
+        assert result["is_uitval"] is True
+        assert result["start"] and result["start"] != "?"
+        assert result["lokaal"] == "440"
+
+    def test_map_rooster_item_geen_uitval(self):
+        item = {
+            "Id": 6,
+            "Start": "2026-09-18T06:35:00.0000000Z",
+            "Einde": "2026-09-18T07:25:00.0000000Z",
+            "Status": 1,
+            "Type": 13,
+            "Omschrijving": "wisb",
+        }
+        result = magister._map_rooster_item(item, {}, 1)
+        assert result["is_uitval"] is False
+
+    def test_merge_uitval_broncode_aanwezig(self):
+        with open(script_path, encoding="utf-8") as f:
+            content = f.read()
+        assert "wijziging_ids" in content
+        assert '"Vervallen" not in infotstr(item.get("Status"' in content

@@ -578,6 +578,31 @@ def safe_datum_field(item, *keys):
             return datum(v)
     return "?"
 
+def _map_rooster_item(item, appointment_history, kindid):
+    """Map een afspraak-/roosterwijziging-item naar de sensor-dict."""
+    return {
+        "start": safe_datum_field(item, "Start", "Datum"),
+        "einde": safe_datum_field(item, "Eind", "Einde"),
+        "status": infotstr(item.get("Status", 0), AFSPRAAK_STATUS),
+        "soort": infotstr(item.get("Type", 0), AFSPRAAK_TYPE),
+        "type": infotstr(item.get("InfoType", 0), AFSPRAAK_INFO_TYPE),
+        "lokaal": item.get("Lokatie", ""),
+        "omschrijving": item.get("Omschrijving", ""),
+        "opmerking": item.get("Opmerking") or "",
+        "inhoud": dehtml(item.get("Inhoud", "")),
+        "is_online": bool(item.get("IsOnlineDeelname", False)),
+        "duurt_hele_dag": bool(item.get("DuurtHeleDag", False)),
+        "vak": ", ".join(filter(None, ([item.get("Vak", {}).get("Naam")] if item.get("Vak") else []) + [v.get("Naam") for v in (item.get("Vakken") or [])])),
+        "vak_id": ", ".join(filter(None, ([str(item.get("Vak", {}).get("Id"))] if item.get("Vak") else []) + [str(v.get("Id")) for v in (item.get("Vakken") or [])])),
+        "docent": ", ".join(filter(None, ([item.get("Docent", {}).get("Naam")] if item.get("Docent") else []) + [d.get("Naam") for d in (item.get("Docenten") or [])])),
+        "docentcode": ", ".join(filter(None, ([item.get("Docent", {}).get("Docentcode")] if item.get("Docent") else []) + [d.get("Docentcode") for d in (item.get("Docenten") or [])])),
+        "is_huiswerk": item.get("InfoType", 0) == 1,
+        "is_uitval": "Vervallen" in (infotstr(item.get("Status", 0), AFSPRAAK_STATUS)),
+        "was_afwijkend": _remember_was_afwijkend(appointment_history, kindid, item),
+        "lesuurstart": item.get("LesuurVan"),
+        "lesuureinde": item.get("LesuurTotMet"),
+    }
+
 def _appointment_key(kind_id, item):
     """Return a stable key for remembering an appointment's history."""
     item_id = item.get("Id") or item.get("ID")
@@ -887,30 +912,19 @@ def main():
         ]
 
         kind_data["wijzigingen"] = [
-            {
-                "start": safe_datum_field(item, "Start", "Datum"),
-                "einde": safe_datum_field(item, "Eind", "Einde"),
-                "status": infotstr(item.get("Status", 0), AFSPRAAK_STATUS),
-                "soort": infotstr(item.get("Type", 0), AFSPRAAK_TYPE),
-                "type": infotstr(item.get("InfoType", 0), AFSPRAAK_INFO_TYPE),
-                "lokaal": item.get("Lokatie", ""),
-                "omschrijving": item.get("Omschrijving", ""),
-                "opmerking": item.get("Opmerking") or "",
-                "inhoud": dehtml(item.get("Inhoud", "")),
-                "is_online": bool(item.get("IsOnlineDeelname", False)),
-                "duurt_hele_dag": bool(item.get("DuurtHeleDag", False)),
-                "vak": ", ".join(filter(None, ([item.get("Vak", {}).get("Naam")] if item.get("Vak") else []) + [v.get("Naam") for v in (item.get("Vakken") or [])])),
-                "vak_id": ", ".join(filter(None, ([str(item.get("Vak", {}).get("Id"))] if item.get("Vak") else []) + [str(v.get("Id")) for v in (item.get("Vakken") or [])])),
-                "docent": ", ".join(filter(None, ([item.get("Docent", {}).get("Naam")] if item.get("Docent") else []) + [d.get("Naam") for d in (item.get("Docenten") or [])])),
-                "docentcode": ", ".join(filter(None, ([item.get("Docent", {}).get("Docentcode")] if item.get("Docent") else []) + [d.get("Docentcode") for d in (item.get("Docenten") or [])])),
-                "is_huiswerk": item.get("InfoType", 0) == 1,
-                "is_uitval": "Vervallen" in (infotstr(item.get("Status", 0), AFSPRAAK_STATUS)),
-                "was_afwijkend": _remember_was_afwijkend(appointment_history, kindid, item),
-                "lesuurstart": item.get("LesuurVan"),
-                "lesuureinde": item.get("LesuurTotMet"),
-            }
+            _map_rooster_item(item, appointment_history, kindid)
             for item in wijzigingen.get("Items", [])
         ]
+
+        # Issue #37: sommige scholen geven vervallen lessen niet terug in
+        # /roosterwijzigingen. Voeg uitval uit /afspraken toe die er nog niet in zit.
+        wijziging_ids = {it.get("Id") for it in wijzigingen.get("Items", []) if it.get("Id") is not None}
+        for item in afspraken.get("Items", []):
+            if item.get("Id") in wijziging_ids:
+                continue
+            if "Vervallen" not in infotstr(item.get("Status", 0), AFSPRAAK_STATUS):
+                continue
+            kind_data["wijzigingen"].append(_map_rooster_item(item, appointment_history, kindid))
 
         # Opdrachten ophalen (losse sensor; niet gebruikt voor huiswerk-afgerond)
         opdr_data = mg.req("personen", kindid, "opdrachten")

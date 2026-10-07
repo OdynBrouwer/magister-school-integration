@@ -1,13 +1,21 @@
-# Release v2.2.0b0 (beta)
+# Release v2.2.0
 
 ## GitHub release text
 
-Nieuwe features en verbeteringen:
+Magister School Integration v2.2.0 voegt volledige studiewijzer-teksten, correcte kindnamen met tussenvoegsel en uitval in de roosterwijzigingen toe.
 
+### Nieuw
 - **Studiewijzers (#41)**: volledige sectietekst i.p.v. previews, met behoud van lijstopmaak; gelijktijdige requests beperkt tot 4.
 - **Kindnamen (#38)**: het `Tussenvoegsel` wordt nu meegenomen (bv. "Jan van Tilburg" i.p.v. "Jan Tilburg").
 - **Uitval in wijzigingen (#37)**: vervallen lessen uit de afspraken worden nu ook aan de roosterwijzigingen toegevoegd.
 - **Docs (#39)**: uitleg over de 16 KB recorder-limiet + `entity_globs` exclude-voorbeeld.
+
+### Met dank aan
+- @Niek (#41), @bassduh (#38), @Matthijsbr123 (#37), @barrymossel (#39)
+
+## HACS update text
+
+Volledige studiewijzer-teksten, Tussenvoegsel in kindnamen, uitval in roosterwijzigingen en verbeterde recorder-documentatie.
 
 ## Previous release: v2.1.1b0
 

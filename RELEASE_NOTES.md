@@ -1,8 +1,20 @@
-# Release v2.2.1b0 (beta)
+# Release v2.2.1
 
 ## GitHub release text
 
-- **Recorder (#39)**: omvangrijke attributen worden nu via `_unrecorded_attributes` uitgesloten van de recorder-historie, zodat de 16 KB-waarschuwing verdwijnt zonder handmatige `recorder.exclude`. Met dank aan @Niek.
+Magister School Integration v2.2.1 sluit omvangrijke attributen automatisch uit van de recorder-historie, zodat de 16 KB-waarschuwing verdwijnt zonder handmatige `recorder.exclude`.
+
+### Nieuw
+
+- **Recorder (#39)**: omvangrijke attributen worden nu via `_unrecorded_attributes` uitgesloten van de recorder-historie. De data blijft live beschikbaar voor card en templates; alleen de recorder slaat de historie niet meer op.
+
+### Met dank aan
+
+- @Niek (#39)
+
+## HACS update text
+
+Omvangrijke attributen worden automatisch uitgesloten van de recorder-historie (geen 16 KB-waarschuwingen meer, zonder handmatige configuratie).
 
 ## Previous release: v2.2.0
 

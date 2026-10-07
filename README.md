@@ -16,14 +16,17 @@ Integreer Magister schoolinformatie direct in je Home Assistant dashboard. Toon 
 - **🎨 Lovelace Card** - Mooie weergave voor je dashboard ([separate card available](https://github.com/OdynBrouwer/magister-school-card))
 - **🧹 Automatische cleanup** – Verwijdert `_1`, `_2` etc. na updates
 - **🔐 Multi-Account Support** - Gebruik meerdere accounts tegelijk zonder conflicts
+- **📖 Studiewijzers** - Volledige studiewijzer-teksten met behoud van lijstopmaak
+- **🚫 Uitval & Wijzigingen** - Vervallen lessen verschijnen ook in de roosterwijzigingen
+- **💾 Recorder-vriendelijk** - Omvangrijke attributen automatisch uitgesloten van de recorder-historie
 
-## ✨ Nieuw in v2.1.0
+## ✨ Nieuw in v2.2.x
 
-- **Klas & profiel** per kind (`klas`, `profiel`)
-- **Voortgangscijfers** van het huidige schooljaar (`voortgangscijfers`)
-- **Absenties** met `geoorloofd`, `code` en `lesuur`
-- **Les-extra's** in afspraken: `opmerking`, `is_online`, `duurt_hele_dag`, `docentcode`, `vak_id`
-- Zie [📊 Attributen & voorbeelden](#-attributen--voorbeelden) voor alle details
+- **Studiewijzers met volledige tekst** (`studiewijzers`) — volledige sectietekst i.p.v. previews, met behoud van lijstopmaak
+- **Uitval in wijzigingen** — vervallen lessen uit de afspraken worden nu ook aan de roosterwijzigingen toegevoegd (`is_uitval`)
+- **Correcte kindnamen met Tussenvoegsel** (bv. "Jan van Tilburg" i.p.v. "Jan Tilburg")
+- **Recorder-vriendelijk (#39)** — omvangrijke attributen worden via `_unrecorded_attributes` automatisch uitgesloten van de recorder-historie; geen 16 KB-waarschuwingen meer, zonder handmatige `recorder.exclude`
+- Eerder in v2.1.0: **klas & profiel**, **voortgangscijfers**, **absenties** en **les-extra's** in afspraken
 
 ## 📋 Vereisten
 
@@ -86,7 +89,7 @@ Na installatie worden de volgende sensors aangemaakt:
 
 Na een update via HACS kan het soms voorkomen dat Home Assistant tijdelijk entities opnieuw registreert, wat leidt tot suffixes zoals `_1`, `_2`, etc. in entity-namen (bijv. `sensor.magister_jan_huiswerk_1`).
 
-Vanaf versie **1.x.x** (of: *in de volgende release*) voert de integratie **automatisch een cleanup uit bij opstart**:
+Vanaf versie **2.0.0** voert de integratie **automatisch een cleanup uit bij opstart**:
 - Entities met suffixes (`_1` t/m `_5`) worden hernoemd naar de originele naam **als die nog niet bestaat**.
 - Dit gebeurt **één keer per opstart**, zonder prestatieverlies.
 - Als er suffixes zijn opgeruimd, verschijnt er een melding in Home Assistant.
@@ -353,18 +356,21 @@ Voor indiening in de **HACS-defaultstore** is nog nodig:
 ## 🗃️ Database Optimalisatie
 
 De overzicht-sensor en de afspraken-sensors bevatten veel data (alle afspraken,
-voortgangscijfers, absenties, etc.). Home Assistant's recorder slaat attributen
-groter dan **16 KB** daarom niet op en logt dan een waarschuwing als:
+voortgangscijfers, absenties, etc.). Vanaf **v2.2.1** sluit de integratie deze
+omvangrijke attributen **automatisch** uit van de recorder-historie via
+`_unrecorded_attributes` — de data blijft gewoon live beschikbaar voor de card
+en templates, maar de recorder slaat alleen de historie niet meer op.
+
+Daarmee verdwijnt de waarschuwing:
 
 ```
 State attributes for sensor.magister_... exceed maximum size of 16384 bytes.
 Attributes will not be stored
 ```
 
-Dit is **geen bug** en heeft geen invloed op de werking: de data blijft gewoon
-live beschikbaar voor de card en templates; alleen de *historie in de database*
-wordt niet opgeslagen. Om de waarschuwing te stoppen kun je de Magister-sensors
-uitsluiten van de recorder:
+Dit is **geen bug**: de data blijft live beschikbaar; alleen de *historie in de
+database* wordt niet opgeslagen. Wil je de sensors tóch volledig uitsluiten van
+de recorder, dan kan dat nog steeds:
 
 ```yaml
 # configuration.yaml

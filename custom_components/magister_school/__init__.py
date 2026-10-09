@@ -101,7 +101,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     coordinator = MagisterDataUpdateCoordinator(
         hass,
-        entry.entry_id,
+        entry,
         entry.data["school"],
         entry.data["user"],
         entry.data["pass"],

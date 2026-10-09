@@ -56,7 +56,7 @@ def studiewijzer_onderdelen(mg, kind_id, studiewijzer_id, onderdelen):
         )
         return {**onderdeel, **detail}
 
-    # Sequential requests can exceed the integration's 30-second timeout.
+    # Bound concurrency to keep full section fetches within the script timeout.
     with ThreadPoolExecutor(max_workers=4) as pool:
         return list(pool.map(fetch, onderdelen))
 
@@ -206,6 +206,27 @@ class Magister:
             safe_args.append(arg)
         print(*safe_args)
 
+    def _read_response(self, req, *, allow_http_error=False, **kwargs):
+        started = time_mod.monotonic()
+        try:
+            try:
+                response = self.opener.open(req, timeout=15, **kwargs)
+            except urllib.error.HTTPError as e:
+                if not allow_http_error:
+                    raise
+                self.logprint("!", str(e))
+                response = e
+            with response:
+                raw = response.read()
+        except (TimeoutError, urllib.error.URLError) as err:
+            if isinstance(err, urllib.error.URLError) and not isinstance(err.reason, TimeoutError):
+                raise
+            # Omit URL paths, query parameters and response bodies from diagnostics.
+            host = urllib.parse.urlsplit(req.full_url).hostname
+            elapsed = time_mod.monotonic() - started
+            raise TimeoutError(f"Magister request to {host} timed out after {elapsed:.1f}s") from None
+        return response, raw
+
     def httpreq(self, url, data=None):
         """
         Generic http request function.
@@ -227,13 +248,7 @@ class Magister:
         kwargs = dict()
         if data:
             kwargs["data"] = data
-        try:
-            response = self.opener.open(req, **kwargs)
-        except urllib.error.HTTPError as e:
-            self.logprint("!", str(e))
-            response = e
-
-        raw = response.read()
+        response, raw = self._read_response(req, allow_http_error=True, **kwargs)
         ctype = response.headers.get("content-type", "")
         if "application/json" in ctype:
             js = json.loads(raw)
@@ -268,8 +283,7 @@ class Magister:
         kwargs = dict()
         if data:
             kwargs["data"] = data
-        response = self.opener.open(req, **kwargs)
-        raw = response.read()
+        response, raw = self._read_response(req, **kwargs)
         if getattr(self.args, "debug", False) and not getattr(self.args, "json", False):
             self.logprint(raw)
             self.logprint()
@@ -534,7 +548,7 @@ def apply_auth_config(cfg, args):
     if not exptime:
         return
     now = datetime.now().astimezone(timezone.utc)
-    if exptime < now - timedelta(minutes=5):
+    if exptime <= now + timedelta(minutes=5):
         return
     args.accesstoken = cfg.get('root', 'accesstoken')
 
@@ -775,6 +789,8 @@ def main():
     # Try to get children - will fail for student accounts
     try:
         k = mg.req("personen", ouderid, "kinderen")
+    except TimeoutError:
+        raise
     except Exception as e:
         # If request fails completely, treat as student account
         k = {"Fouttype": "OnvoldoendePrivileges"}
@@ -978,6 +994,8 @@ def main():
         if meld and meld.get("Id"):
             try:
                 vc = mg.req("aanmeldingen", meld["Id"], "cijfers")
+            except TimeoutError:
+                raise
             except Exception:
                 vc = None
             for cijfer in (vc or {}).get("items", []) or []:
@@ -1073,6 +1091,9 @@ def main():
 if __name__ == '__main__':
     try:
         main()
+    except TimeoutError as err:
+        print(str(err), file=sys.stderr)
+        sys.exit(75)
     except Exception as e:
         # behoud originele error-logbestanden gedrag
         try:

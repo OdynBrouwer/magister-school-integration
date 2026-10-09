@@ -1,4 +1,10 @@
 {
+  "issues": {
+    "fetch_failed": {
+      "title": "Magister data unavailable: {name}",
+      "description": "Magister could not fetch current data: {error}\n\nThe integration will retry automatically. If the problem persists, check your internet connection and whether you can log in to Magister. This issue clears once data is available again."
+    }
+  },
   "config": {
     "step": {
       "user": {

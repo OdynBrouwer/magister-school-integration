@@ -1,4 +1,10 @@
 {
+    "issues": {
+      "fetch_failed": {
+        "title": "Magister-data niet beschikbaar: {name}",
+        "description": "Magister kon geen actuele data ophalen: {error}\n\nDe integratie probeert het automatisch opnieuw. Controleer bij aanhoudende problemen je internetverbinding en of je kunt inloggen bij Magister. Deze melding verdwijnt zodra er weer data beschikbaar is."
+      }
+    },
     "config": {
       "step": {
         "user": {

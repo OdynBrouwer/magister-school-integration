@@ -2,8 +2,8 @@ import subprocess
 import json
 import logging
 import os
+import time
 from pathlib import Path
-from .const import CONF_SCHOOL, CONF_USER, CONF_PASS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,26 +47,26 @@ class MagisterAPI:
         else:
             env.pop("MAGISTER_TOTP_SECRET", None)
 
-        try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=30,
-                check=True,
-                env=env,
-            )
-            return json.loads(result.stdout)
+        for attempt in range(2):
+            started = time.monotonic()
+            try:
+                result = subprocess.run(
+                    cmd, capture_output=True, text=True, timeout=90, check=True, env=env,
+                )
+            except subprocess.TimeoutExpired:
+                # subprocess.run kills and waits for the child before raising.
+                error = "Magister script timed out after 90 seconds"
+            except subprocess.CalledProcessError as err:
+                if err.returncode != 75:  # EX_TEMPFAIL: retry only script timeouts.
+                    _LOGGER.error("Magister script error: %s", err.stderr)
+                    raise
+                lines = (err.stderr or "").strip().splitlines()
+                error = lines[-1] if lines else "Magister HTTP request timed out"
+            else:
+                _LOGGER.debug("Magister fetch completed in %.1fs", time.monotonic() - started)
+                return json.loads(result.stdout)
 
-        except subprocess.TimeoutExpired:
-            _LOGGER.error("Magister script timeout")
-            raise TimeoutError("Magister script timeout") from None
-        except subprocess.CalledProcessError as e:
-            _LOGGER.error("Magister script error: %s", e.stderr)
-            raise
-        except json.JSONDecodeError as e:
-            _LOGGER.error("Ongeldige JSON van Magister script: %s", e)
-            raise
-        except Exception as e:
-            _LOGGER.error("Onverwachte fout: %s", e)
-            raise
+            if attempt:
+                raise TimeoutError(error) from None
+            _LOGGER.debug("%s; retrying once in 2 seconds", error)
+            time.sleep(2)

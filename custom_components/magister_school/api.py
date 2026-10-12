@@ -110,7 +110,8 @@ class MagisterAPI:
                 data = json.loads(result.stdout)
                 if warnings := data.get("data_warnings"):
                     _LOGGER.warning(
-                        "Incomplete Magister data (invalid collections/records per section): %s",
+                        "Incomplete Magister data (invalid collections/records per "
+                        "section): %s",
                         warnings,
                     )
                 return data

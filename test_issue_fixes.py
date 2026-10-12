@@ -337,6 +337,79 @@ def test_studiewijzer_full_text(monkeypatch, response, expected):
     assert len(mg._raw_dump) == 1
 
 
+@pytest.mark.parametrize("broken_guide", [
+    {}, {"Fouttype": "OnvoldoendePrivileges"}, b"SecurityToken Expired",
+    {"Onderdelen": None}, {"Onderdelen": []}, {"Onderdelen": {}},
+    {"Onderdelen": {"Items": None}}, {"Onderdelen": {"Items": {}}},
+])
+def test_missing_study_guide_sections_preserve_refresh(monkeypatch, tmp_path, capsys, broken_guide):
+    import json
+    from pathlib import Path
+
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    monkeypatch.setattr(sys, "argv", [script_path, "--json", "--accesstoken", "test-token",
+                                      "--schoolserver", "example.invalid"])
+
+    def request(client, url):
+        path = magister.urllib.parse.urlsplit(url).path
+        if path == "/api/account":
+            return {"Persoon": {"Id": 1}}
+        if path == "/api/personen/1/kinderen":
+            return {"Items": [{"Id": 2, "Roepnaam": "First"}, {"Id": 3, "Roepnaam": "Second"}]}
+        if path.endswith("/afspraken"):
+            return {"Items": [{"Start": "2026-10-12T08:00:00Z", "Omschrijving": "Math", "Status": 1}]}
+        if path.endswith("/cijfers/laatste"):
+            return {"items": [{"waarde": "8"}]}
+        if path.endswith("/studiewijzers"):
+            return {"Items": [{"Id": 10}, {"Id": 11}, {"Id": 12}]}
+        if path.endswith("/studiewijzers/10"):
+            return broken_guide
+        if path.endswith("/studiewijzers/11"):
+            return {"Titel": "Valid", "Onderdelen": {"Items": [{"Id": 20, "Titel": "Week 1"}]}}
+        if path.endswith("/studiewijzers/12"):
+            return {"Titel": "Empty", "Onderdelen": {"Items": []}}
+        if path.endswith("/onderdelen/20"):
+            return {"Omschrijving": "<p>Full section text</p>"}
+        return {}
+
+    monkeypatch.setattr(magister.Magister, "httpreq", request)
+    magister.main()
+    data = json.loads(capsys.readouterr().out)
+    assert data["skipped_study_guides"] == 2
+    for name in ("First", "Second"):
+        assert data["kinderen"][name]["afspraken"][0]["omschrijving"] == "Math"
+        assert data["cijfers"][name][0]["waarde"] == "8"
+        guides = data["studiewijzers"][name]
+        assert [guide["titel"] for guide in guides] == ["Valid", "Empty"]
+        assert guides[0]["onderdelen"][0]["omschrijving"].strip() == "Full section text"
+        assert guides[1]["onderdelen"] == []
+
+
+@pytest.mark.parametrize("skipped", [0, 2])
+def test_api_reports_skipped_study_guides(monkeypatch, caplog, skipped):
+    import json
+    from unittest.mock import Mock
+
+    monkeypatch.setitem(sys.modules, "magister_api_test.const", SimpleNamespace(
+        CONF_SCHOOL="school", CONF_USER="user", CONF_PASS="pass",
+        EXIT_AUTH_FAILED=77, AUTH_FAILED_MARKER="AUTHENTICATION_FAILED",
+    ))
+    api_path = os.path.join(os.path.dirname(script_path), "..", "api.py")
+    api_spec = importlib.util.spec_from_file_location("magister_api_test.api", api_path)
+    api = importlib.util.module_from_spec(api_spec)
+    api_spec.loader.exec_module(api)
+    data = {"kinderen": {"Student": {}}}
+    if skipped:
+        data["skipped_study_guides"] = skipped
+    monkeypatch.setattr(api.subprocess, "run", Mock(return_value=SimpleNamespace(stdout=json.dumps(data))))
+    assert api.MagisterAPI("school", "user", "password").get_data() == data
+    assert bool(caplog.records) is bool(skipped)
+    if skipped:
+        assert caplog.records[0].getMessage() == (
+            "Skipped 2 Magister study guides with missing or invalid section data"
+        )
+
+
 class TestOnverwachtAntwoord:
     """Magister antwoordt soms met HTML of een lege body in plaats van JSON.
 

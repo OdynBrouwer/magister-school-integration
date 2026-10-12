@@ -104,8 +104,16 @@ class MagisterAPI:
                 lines = stderr.splitlines()
                 error = lines[-1] if lines else "Magister HTTP request timed out"
             else:
-                _LOGGER.debug("Magister fetch completed in %.1fs", time.monotonic() - started)
-                return json.loads(result.stdout)
+                _LOGGER.debug(
+                    "Magister fetch completed in %.1fs", time.monotonic() - started
+                )
+                data = json.loads(result.stdout)
+                if warnings := data.get("data_warnings"):
+                    _LOGGER.warning(
+                        "Incomplete Magister data (invalid collections/records per section): %s",
+                        warnings,
+                    )
+                return data
 
             if attempt:
                 raise TimeoutError(error) from None

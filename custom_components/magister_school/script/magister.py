@@ -1095,6 +1095,12 @@ def main():
         output_data["studiewijzers"][kind_naam] = []
         for sw in swlist.get("Items", []):
             switem = mg.req("leerlingen", kindid, "studiewijzers", sw["Id"])
+            onderdelen = switem.get("Onderdelen")
+            items = onderdelen.get("Items") if isinstance(onderdelen, dict) else None
+            if not isinstance(items, list):
+                # An incomplete/error response must not discard the entire refresh.
+                output_data["skipped_study_guides"] = output_data.get("skipped_study_guides", 0) + 1
+                continue
             output_data["studiewijzers"][kind_naam].append({
                 "titel": switem.get("Titel", ""),
                 "van": datum(switem.get("Van")),
@@ -1104,7 +1110,7 @@ def main():
                         "titel": o.get("Titel", ""),
                         "omschrijving": dehtml(o.get("Omschrijving", ""))
                     }
-                    for o in studiewijzer_onderdelen(mg, kindid, sw["Id"], switem["Onderdelen"]["Items"])
+                    for o in studiewijzer_onderdelen(mg, kindid, sw["Id"], items)
                 ]
             })
 

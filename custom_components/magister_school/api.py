@@ -56,7 +56,10 @@ class MagisterAPI:
                 check=True,
                 env=env,
             )
-            return json.loads(result.stdout)
+            data = json.loads(result.stdout)
+            if warnings := data.get("data_warnings"):
+                _LOGGER.warning("Incomplete Magister data (invalid collections/records per section): %s", warnings)
+            return data
 
         except subprocess.TimeoutExpired:
             _LOGGER.error("Magister script timeout")

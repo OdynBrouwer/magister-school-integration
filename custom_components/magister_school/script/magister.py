@@ -17,11 +17,35 @@ from pathlib import Path
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 
+def object_data(value):
+    """Read optional nested objects without assuming null is a dictionary."""
+    return value if isinstance(value, dict) else {}
+
+
+def object_list(value):
+    """Read optional nested lists, ignoring non-object entries."""
+    return [item for item in value if isinstance(item, dict)] if isinstance(value, list) else []
+
+
+def response_items(data, warnings, section, key="Items", required=()):
+    """Keep valid records and explicitly report missing collections or invalid rows."""
+    items = object_data(data).get(key)
+    if not isinstance(items, list):
+        warnings[section] = warnings.get(section, 0) + 1
+        return []
+    valid = [item for item in items if isinstance(item, dict) and item
+             and all(isinstance(item.get(field), (int, str)) and item[field] != "" for field in required)]
+    if skipped := len(items) - len(valid):
+        warnings[section] = warnings.get(section, 0) + skipped
+    return valid
+
+
 def dehtml(html):
     """
     convert html to somewhat readable text.
     """
-    if html is None: return
+    if not isinstance(html, str):
+        return None
 
     html = re.sub(r"</(?:p|li|ul|ol)>|<br\s*/?>", "\n", html, flags=re.IGNORECASE)
     html = re.sub(r"<li\b[^>]*>", "• ", html, flags=re.IGNORECASE)
@@ -65,7 +89,7 @@ def datum(ts):
     """
     Strip the date's to a more reasonable string.
     """
-    if not ts:
+    if not isinstance(ts, str) or not ts:
         return "?"
     if m := re.split(r"[-T:Z.]", ts):
         # voorzichtig: m[-1] kan soms leeg zijn; oorspronkelijke code gebruikte m[:-1]
@@ -230,6 +254,8 @@ class Magister:
         try:
             response = self.opener.open(req, **kwargs)
         except urllib.error.HTTPError as e:
+            if e.code == 401:
+                raise
             self.logprint("!", str(e))
             response = e
 
@@ -477,15 +503,12 @@ class Magister:
         if self._raw_dump is not None:
             self._raw_dump.setdefault(path + qs, response)
 
-        # Magister antwoordt bij een storing of een verlopen sessie soms met HTML
-        # of een lege body in plaats van JSON. Zo'n antwoord is geen dict en laat
-        # de aanroeper crashen ('bytes' object has no attribute 'get').
+        if isinstance(response, (bytes, str)) and response.strip() in (
+            b"SecurityToken Expired", "SecurityToken Expired",
+        ):
+            raise RuntimeError("Magister session expired")
         if not isinstance(response, dict):
-            snippet = response[:120] if isinstance(response, (bytes, str)) else response
-            print(
-                f"! geen JSON-antwoord op /{path} - leeg resultaat gebruikt: {snippet!r}",
-                file=sys.stderr,
-            )
+            print(f"! geen JSON-antwoord voor {'.'.join(tag)}", file=sys.stderr)
             return {}
 
         return response
@@ -592,10 +615,10 @@ def _map_rooster_item(item, appointment_history, kindid):
         "inhoud": dehtml(item.get("Inhoud", "")),
         "is_online": bool(item.get("IsOnlineDeelname", False)),
         "duurt_hele_dag": bool(item.get("DuurtHeleDag", False)),
-        "vak": ", ".join(filter(None, ([item.get("Vak", {}).get("Naam")] if item.get("Vak") else []) + [v.get("Naam") for v in (item.get("Vakken") or [])])),
-        "vak_id": ", ".join(filter(None, ([str(item.get("Vak", {}).get("Id"))] if item.get("Vak") else []) + [str(v.get("Id")) for v in (item.get("Vakken") or [])])),
-        "docent": ", ".join(filter(None, ([item.get("Docent", {}).get("Naam")] if item.get("Docent") else []) + [d.get("Naam") for d in (item.get("Docenten") or [])])),
-        "docentcode": ", ".join(filter(None, ([item.get("Docent", {}).get("Docentcode")] if item.get("Docent") else []) + [d.get("Docentcode") for d in (item.get("Docenten") or [])])),
+        "vak": ", ".join(filter(None, ([object_data(item.get("Vak")).get("Naam")] if item.get("Vak") else []) + [v.get("Naam") for v in object_list(item.get("Vakken"))])),
+        "vak_id": ", ".join(filter(None, ([str(object_data(item.get("Vak")).get("Id"))] if item.get("Vak") else []) + [str(v.get("Id")) for v in object_list(item.get("Vakken"))])),
+        "docent": ", ".join(filter(None, ([object_data(item.get("Docent")).get("Naam")] if item.get("Docent") else []) + [d.get("Naam") for d in object_list(item.get("Docenten"))])),
+        "docentcode": ", ".join(filter(None, ([object_data(item.get("Docent")).get("Docentcode")] if item.get("Docent") else []) + [d.get("Docentcode") for d in object_list(item.get("Docenten"))])),
         "is_huiswerk": item.get("InfoType", 0) == 1,
         "is_uitval": "Vervallen" in (infotstr(item.get("Status", 0), AFSPRAAK_STATUS)),
         "was_afwijkend": _remember_was_afwijkend(appointment_history, kindid, item),
@@ -764,35 +787,18 @@ def main():
 
     d = mg.req("account")
 
-    # Check if account request was successful
-    if not isinstance(d, dict) or "Persoon" not in d:
-        if not args.json:
-            print(f"ERROR: Could not get account info. Response: {d}")
-        sys.exit(1)
+    person = object_data(d.get("Persoon"))
+    if not isinstance(person.get("Id"), (int, str)) or person["Id"] == "":
+        raise ValueError("Magister account response has no valid person ID")
 
-    ouderid = d["Persoon"]["Id"]
-
-    # Try to get children - will fail for student accounts
-    try:
-        k = mg.req("personen", ouderid, "kinderen")
-    except Exception as e:
-        # If request fails completely, treat as student account
-        k = {"Fouttype": "OnvoldoendePrivileges"}
-
-    # Check if student account (gets permission error)
-    if k.get('Fouttype'):
-        # Student account - use own ID as "kind"
-        kinderen = [{
-            "Id": d["Persoon"]["Id"],
-            "Roepnaam": d["Persoon"].get("Roepnaam", ""),
-            "Tussenvoegsel": d["Persoon"].get("Tussenvoegsel", ""),
-            "Achternaam": d["Persoon"].get("Achternaam", ""),
-            "Geboortedatum": d["Persoon"].get("Geboortedatum", ""),
-            "Stamnummer": d["Persoon"].get("Stamnummer", "")
-        }]
+    k = mg.req("personen", person["Id"], "kinderen")
+    warnings = {}
+    if k.get("Fouttype") == "OnvoldoendePrivileges":
+        kinderen = [person]  # Student accounts cannot list children.
     else:
-        # Parent account - use children list
-        kinderen = k.get("Items", [])
+        kinderen = response_items(k, warnings, "kinderen", required=("Id",))
+        if warnings or not kinderen or k.get("Fouttype"):
+            raise ValueError("Magister children response has no valid student list")
 
     for kind in kinderen:
         kind_naam = " ".join(
@@ -809,21 +815,21 @@ def main():
         kindid = kind["Id"]
 
         # Aanmeldingen
-        x = mg.req("personen", kindid, "aanmeldingen")
+        x = response_items(mg.req("personen", kindid, "aanmeldingen"), warnings, "aanmeldingen")
         kind_data["aanmeldingen"] = [
             {
                 "start": datum(item.get("Start")),
                 "einde": datum(item.get("Einde")),
                 "lesperiode": item.get("Lesperiode"),
-                "studie": item.get("Studie", {}).get("Omschrijving", "") if item.get("Studie") else ""
+                "studie": object_data(item.get("Studie")).get("Omschrijving", "") if item.get("Studie") else ""
             }
-            for item in x.get("Items", [])
+            for item in x
         ]
 
         # Huidige klas en profiel uit de actieve aanmelding
         nu = datetime.now().date()
         actieve_aanmelding = None
-        for m in x.get("Items", []):
+        for m in x:
             try:
                 s = datetime.strptime((m.get("Start") or "")[:10], "%Y-%m-%d").date()
                 e = datetime.strptime((m.get("Einde") or "")[:10], "%Y-%m-%d").date()
@@ -831,10 +837,10 @@ def main():
                 continue
             if s <= nu <= e:
                 actieve_aanmelding = m
-        if actieve_aanmelding is None and x.get("Items"):
-            actieve_aanmelding = x["Items"][-1]
+        if actieve_aanmelding is None and x:
+            actieve_aanmelding = x[-1]
         if actieve_aanmelding:
-            kind_data["klas"] = (actieve_aanmelding.get("Groep") or {}).get("Omschrijving", "")
+            kind_data["klas"] = object_data(actieve_aanmelding.get("Groep")).get("Omschrijving", "")
             kind_data["profiel"] = actieve_aanmelding.get("Profiel") or ""
 
         # Rooster data: determine lesperiode as before
@@ -847,7 +853,7 @@ def main():
         target_date = datetime.strptime(start_date, "%Y-%m-%d").date()
         lesperiode = None
 
-        for meld in x.get("Items", []):
+        for meld in x:
             if "Start" not in meld or "Eind" not in meld:
                 continue
             try:
@@ -860,8 +866,8 @@ def main():
                 lesperiode = omschrijving.split()[0] if omschrijving else None
                 break
 
-        if not lesperiode and x.get("Items"):
-            last = x["Items"][-1]
+        if not lesperiode and x:
+            last = x[-1]
             lesperiode = last.get("Lesperiode")
 
         if lesperiode:
@@ -870,17 +876,11 @@ def main():
         afspraken = mg.req("personen", kindid, "afspraken", params)
         wijzigingen = mg.req("personen", kindid, "roosterwijzigingen", params)
 
-        # req() geeft al een lege dict terug bij een onbruikbaar antwoord; hier
-        # nogmaals expliciet zodat een run nooit klapt op een ontbrekend rooster.
-        if not isinstance(afspraken, dict):
-            print("! /afspraken gaf geen JSON terug - lege lijst gebruikt", file=sys.stderr)
-            afspraken = {}
-        if not isinstance(wijzigingen, dict):
-            print("! /roosterwijzigingen gaf geen JSON terug - lege lijst gebruikt", file=sys.stderr)
-            wijzigingen = {}
+        afspraken = response_items(afspraken, warnings, "afspraken")
+        wijzigingen = response_items(wijzigingen, warnings, "roosterwijzigingen")
 
         if getattr(args, 'inspect_homework', False):
-            hw = [item for item in afspraken.get("Items", []) if item.get("InfoType", 0) == 1]
+            hw = [item for item in afspraken if item.get("InfoType", 0) == 1]
             print(json.dumps(hw[:3], indent=2, ensure_ascii=False, default=str))
             sys.exit(0)
 
@@ -891,16 +891,16 @@ def main():
                 "status": infotstr(item.get("Status", 0), AFSPRAAK_STATUS),
                 "soort": infotstr(item.get("Type", 0), AFSPRAAK_TYPE),
                 "type": infotstr(item.get("InfoType", 0), AFSPRAAK_INFO_TYPE),
-                "lokaal": ", ".join(filter(None, [item.get("Lokatie")] + [l.get("Naam") for l in (item.get("Lokalen") or [])])),
+                "lokaal": ", ".join(filter(None, [item.get("Lokatie")] + [l.get("Naam") for l in object_list(item.get("Lokalen"))])),
                 "omschrijving": item.get("Omschrijving", ""),
                 "opmerking": item.get("Opmerking") or "",
                 "inhoud": dehtml(item.get("Inhoud", "")),
                 "is_online": bool(item.get("IsOnlineDeelname", False)),
                 "duurt_hele_dag": bool(item.get("DuurtHeleDag", False)),
-                "vak": ", ".join(filter(None, ([item.get("Vak", {}).get("Naam")] if item.get("Vak") else []) + [v.get("Naam") for v in (item.get("Vakken") or [])])),
-                "vak_id": ", ".join(filter(None, ([str(item.get("Vak", {}).get("Id"))] if item.get("Vak") else []) + [str(v.get("Id")) for v in (item.get("Vakken") or [])])),
-                "docent": ", ".join(filter(None, ([item.get("Docent", {}).get("Naam")] if item.get("Docent") else []) + [d.get("Naam") for d in (item.get("Docenten") or [])])),
-                "docentcode": ", ".join(filter(None, ([item.get("Docent", {}).get("Docentcode")] if item.get("Docent") else []) + [d.get("Docentcode") for d in (item.get("Docenten") or [])])),
+                "vak": ", ".join(filter(None, ([object_data(item.get("Vak")).get("Naam")] if item.get("Vak") else []) + [v.get("Naam") for v in object_list(item.get("Vakken"))])),
+                "vak_id": ", ".join(filter(None, ([str(object_data(item.get("Vak")).get("Id"))] if item.get("Vak") else []) + [str(v.get("Id")) for v in object_list(item.get("Vakken"))])),
+                "docent": ", ".join(filter(None, ([object_data(item.get("Docent")).get("Naam")] if item.get("Docent") else []) + [d.get("Naam") for d in object_list(item.get("Docenten"))])),
+                "docentcode": ", ".join(filter(None, ([object_data(item.get("Docent")).get("Docentcode")] if item.get("Docent") else []) + [d.get("Docentcode") for d in object_list(item.get("Docenten"))])),
                 "is_huiswerk": item.get("InfoType", 0) == 1,
                 "is_afgerond": bool(item.get("Afgerond", False)),
                 "is_uitval": "Vervallen" in (infotstr(item.get("Status", 0), AFSPRAAK_STATUS)),
@@ -908,18 +908,18 @@ def main():
                 "lesuurstart": item.get("LesuurVan"),
                 "lesuureinde": item.get("LesuurTotMet"),
             }
-            for item in afspraken.get("Items", [])
+            for item in afspraken
         ]
 
         kind_data["wijzigingen"] = [
             _map_rooster_item(item, appointment_history, kindid)
-            for item in wijzigingen.get("Items", [])
+            for item in wijzigingen
         ]
 
         # Issue #37: sommige scholen geven vervallen lessen niet terug in
         # /roosterwijzigingen. Voeg uitval uit /afspraken toe die er nog niet in zit.
-        wijziging_ids = {it.get("Id") for it in wijzigingen.get("Items", []) if it.get("Id") is not None}
-        for item in afspraken.get("Items", []):
+        wijziging_ids = {it.get("Id") for it in wijzigingen if it.get("Id") is not None}
+        for item in afspraken:
             if item.get("Id") in wijziging_ids:
                 continue
             if "Vervallen" not in infotstr(item.get("Status", 0), AFSPRAAK_STATUS):
@@ -959,13 +959,13 @@ def main():
         c = mg.req("personen", kindid, "cijfers", "laatste", dict(top=50))
         output_data["cijfers"][kind_naam] = [
             {
-                "vak": item.get("vak", {}).get("code", ""),
+                "vak": object_data(item.get("vak")).get("code", ""),
                 "omschrijving": item.get("omschrijving", ""),
                 "waarde": item.get("waarde", ""),
                 "weegfactor": item.get("weegfactor", ""),
                 "ingevoerd_op": datum(item.get("ingevoerdOp"))
             }
-            for item in c.get("items", [])
+            for item in response_items(c, warnings, "cijfers", "items")
         ]
 
         # Voortgangscijfers van het huidige schooljaar (actieve aanmelding).
@@ -976,12 +976,9 @@ def main():
         voortgang = []
         meld = actieve_aanmelding
         if meld and meld.get("Id"):
-            try:
-                vc = mg.req("aanmeldingen", meld["Id"], "cijfers")
-            except Exception:
-                vc = None
-            for cijfer in (vc or {}).get("items", []) or []:
-                kolom = cijfer.get("kolom") or {}
+            vc = mg.req("aanmeldingen", meld["Id"], "cijfers")
+            for cijfer in response_items(vc, warnings, "voortgangscijfers", "items"):
+                kolom = object_data(cijfer.get("kolom"))
                 kolom_naam = kolom.get("naam") or ""
                 vak_match = re.match(r"^([a-z]+)", kolom_naam)
                 voortgang.append({
@@ -990,7 +987,7 @@ def main():
                     "vak_id": kolom.get("studievakId"),
                     "kolom": kolom_naam,
                     "omschrijving": kolom.get("omschrijving") or kolom.get("kop") or "",
-                    "periode": (kolom.get("periode") or {}).get("code", ""),
+                    "periode": object_data(kolom.get("periode")).get("code", ""),
                     "waarde": cijfer.get("waarde", ""),
                     "cijfer": cijfer.get("cijferGetal"),
                     "weegfactor": kolom.get("weegfactor"),
@@ -1011,12 +1008,12 @@ def main():
                 "start": datum(item.get("Start")),
                 "einde": datum(item.get("Eind")),
                 "omschrijving": item.get("Omschrijving", ""),
-                "afspraak": item.get("Afspraak", {}).get("Omschrijving", ""),
+                "afspraak": object_data(item.get("Afspraak")).get("Omschrijving", ""),
                 "geoorloofd": bool(item.get("Geoorloofd", False)),
                 "code": item.get("Code", ""),
                 "lesuur": item.get("Lesuur")
             }
-            for item in abs_data.get("Items", [])
+            for item in response_items(abs_data, warnings, "absenties")
         ]
 
         # Opdrachten (al eerder opgehaald voor huiswerk-filtering)
@@ -1028,7 +1025,7 @@ def main():
                 "ingeleverd_op": datum(item.get("IngeleverdOp")),
                 "omschrijving": dehtml(item.get("Omschrijving", ""))
             }
-            for item in opdr_data.get("Items", [])
+            for item in response_items(opdr_data, warnings, "opdrachten")
         ]
 
         # Activiteiten
@@ -1039,14 +1036,18 @@ def main():
                 "zichtbaar_vanaf": datum(item.get("ZichtbaarVanaf")),
                 "zichtbaar_tot": datum(item.get("ZichtbaarTotEnMet"))
             }
-            for item in act_data.get("Items", [])
+            for item in response_items(act_data, warnings, "activiteiten")
         ]
 
         # Studiewijzers
         swlist = mg.req("leerlingen", kindid, "studiewijzers")
         output_data["studiewijzers"][kind_naam] = []
-        for sw in swlist.get("Items", []):
+        for sw in response_items(swlist, warnings, "studiewijzers", required=("Id",)):
             switem = mg.req("leerlingen", kindid, "studiewijzers", sw["Id"])
+            onderdelen = switem.get("Onderdelen")
+            items = response_items(onderdelen, warnings, "studiewijzers", required=("Id",))
+            if not isinstance(object_data(onderdelen).get("Items"), list):
+                continue
             output_data["studiewijzers"][kind_naam].append({
                 "titel": switem.get("Titel", ""),
                 "van": datum(switem.get("Van")),
@@ -1056,10 +1057,12 @@ def main():
                         "titel": o.get("Titel", ""),
                         "omschrijving": dehtml(o.get("Omschrijving", ""))
                     }
-                    for o in studiewijzer_onderdelen(mg, kindid, sw["Id"], switem["Onderdelen"]["Items"])
+                    for o in studiewijzer_onderdelen(mg, kindid, sw["Id"], items)
                 ]
             })
 
+    if warnings:
+        output_data["data_warnings"] = warnings
     _save_appointment_history(history_path, appointment_history)
 
     if getattr(args, 'dump_raw', None) and mg._raw_dump is not None:

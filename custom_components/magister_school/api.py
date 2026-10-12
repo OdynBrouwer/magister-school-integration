@@ -57,8 +57,8 @@ class MagisterAPI:
                 env=env,
             )
             data = json.loads(result.stdout)
-            if skipped := data.get("skipped_study_guides"):
-                _LOGGER.warning("Skipped %s Magister study guides with missing or invalid section data", skipped)
+            if warnings := data.get("data_warnings"):
+                _LOGGER.warning("Incomplete Magister data (invalid collections/records per section): %s", warnings)
             return data
 
         except subprocess.TimeoutExpired:

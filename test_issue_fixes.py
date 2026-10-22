@@ -1,5 +1,6 @@
 """Tests for issue fixes #31, #32, #33, #34."""
 import sys
+import json
 import os
 import importlib.util
 import pytest
@@ -178,7 +179,7 @@ class TestAPIParameters:
         assert "totp_secret=entry.data.get(\"totp_secret\")" in content
         assert "days_back=entry.options.get(\"dagen_terug\"" in content
         assert "days_forward=entry.options.get(\"dagen_vooruit\"" in content
-        assert 'history_file=hass.config.path(".storage"' in content
+        assert "magister_school_appointment_history.json" in content
 
 
 class TestHistoryFile:
@@ -432,3 +433,68 @@ class TestUnrecordedAttributes:
         assert content.count("_unrecorded_attributes = _UNRECORDED_ATTRS") >= 12
         assert '"voortgangscijfers"' in content
         assert '"afspraken"' in content
+
+
+class TestHacsReviewFixes:
+    """Regressions for the HACS default-store review (hacs/default#10760)."""
+
+    ROOT = os.path.dirname(__file__)
+    COMPONENT = os.path.join(ROOT, "custom_components", "magister_school")
+
+    def _read(self, name):
+        with open(os.path.join(self.COMPONENT, name), encoding="utf-8") as f:
+            return f.read()
+
+    def test_unique_ids_are_scoped_to_config_entry(self):
+        sensor = self._read("sensor.py")
+        calendar = self._read("calendar.py")
+        assert 'self._attr_unique_id = "magister_main_data"' not in sensor
+        assert 'f"{self._coordinator.entry_id}_magister_' in sensor
+        assert 'f"{coordinator.entry_id}_magister_' in calendar
+
+    def test_entity_registry_cleanup_is_entry_scoped(self):
+        init = self._read("__init__.py")
+        assert "_cleanup_suffix_entities" not in init
+        assert "async_entries_for_config_entry" in init
+
+    def test_unique_id_migration_keeps_entity_ids(self):
+        init = self._read("__init__.py")
+        assert "new_unique_id" in init
+        assert "_async_migrate_unique_ids" in init
+
+    def test_zoneinfo_is_not_built_in_event_loop(self):
+        calendar = self._read("calendar.py")
+        assert calendar.count('ZoneInfo("Europe/Amsterdam")') == 1
+        assert '_TZ = ZoneInfo("Europe/Amsterdam")' in calendar
+
+    def test_poll_interval_is_wired_to_coordinator(self):
+        assert "poll_interval" in self._read("coordinator.py")
+        assert "timedelta(seconds=poll_interval)" in self._read("coordinator.py")
+        assert 'entry.options.get("poll_interval"' in self._read("__init__.py")
+
+    def test_login_failure_raises_authentication_required(self):
+        api = self._read("api.py")
+        assert "EXIT_AUTH_FAILED" in api
+        assert "raise AuthenticationRequired(" in api
+        script = open(
+            os.path.join(self.COMPONENT, "script", "magister.py"), encoding="utf-8"
+        ).read()
+        assert "sys.exit(EXIT_AUTH_FAILED)" in script
+
+    def test_upstream_mit_notice_is_present(self):
+        script = open(
+            os.path.join(self.COMPONENT, "script", "magister.py"), encoding="utf-8"
+        ).read()
+        assert "nlitsme/magister-tool" in script
+        assert "Willem Hengeveld" in script
+        assert "THE SOFTWARE IS PROVIDED \"AS IS\"" in script
+
+    def test_card_is_bundled_and_served(self):
+        assert os.path.isfile(
+            os.path.join(self.COMPONENT, "www", "magister-school-card.js")
+        )
+        init = self._read("__init__.py")
+        assert "async_register_static_paths" in init
+        assert "async_create_item" in init
+        manifest = json.loads(self._read("manifest.json"))
+        assert "lovelace" in manifest["dependencies"]

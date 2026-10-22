@@ -6,20 +6,22 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.components import persistent_notification
 
 from .api import MagisterAPI, AuthenticationRequired
+from .const import DEFAULT_POLL_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 
 class MagisterDataUpdateCoordinator(DataUpdateCoordinator):
     """Coordinator voor Magister data updates."""
 
-    def __init__(self, hass: HomeAssistant, school: str, username: str, password: str, totp_secret: str = None, days_back: int = 0, days_forward: int = 14, history_file: str = None):
+    def __init__(self, hass: HomeAssistant, entry_id: str, school: str, username: str, password: str, totp_secret: str = None, days_back: int = 0, days_forward: int = 14, history_file: str = None, poll_interval: int = DEFAULT_POLL_INTERVAL):
+        self.entry_id = entry_id
         self.api = MagisterAPI(school, username, password, totp_secret=totp_secret, days_back=days_back, days_forward=days_forward, history_file=history_file)
-        
+
         super().__init__(
             hass,
             _LOGGER,
             name="Magister",
-            update_interval=timedelta(minutes=15),
+            update_interval=timedelta(seconds=poll_interval),
         )
 
     async def _async_update_data(self):

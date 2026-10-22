@@ -116,7 +116,7 @@ class KindOverviewSensor(SensorEntity):
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
         self._kind_naam = kind_naam
-        self._attr_unique_id = f"magister_{base_id}_overview"
+        self._attr_unique_id = f"{self._coordinator.entry_id}_magister_{base_id}_overview"
         self._attr_name = f"Magister {kind_naam}"
         self._attr_icon = "mdi:school"
 
@@ -248,7 +248,7 @@ class MagisterMainSensor(SensorEntity):
     def __init__(self, coordinator, name):
         self._coordinator = coordinator
         self._name = name
-        self._attr_unique_id = "magister_main_data"
+        self._attr_unique_id = f"{coordinator.entry_id}_magister_main_data"
 
     @property
     def name(self):
@@ -292,7 +292,7 @@ class KindAantalAfsprakenSensor(SensorEntity):
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
         self._kind_naam = kind_naam
-        self._attr_unique_id = f"magister_{base_id}_afspraken_vandaag"
+        self._attr_unique_id = f"{self._coordinator.entry_id}_magister_{base_id}_afspraken_vandaag"
         self._attr_name = f"Magister {kind_naam} Afspraken Vandaag"
         self._attr_icon = "mdi:calendar-today"
 
@@ -338,7 +338,7 @@ class KindAantalHuiswerkSensor(SensorEntity):
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
         self._kind_naam = kind_naam
-        self._attr_unique_id = f"magister_{base_id}_huiswerk"
+        self._attr_unique_id = f"{self._coordinator.entry_id}_magister_{base_id}_huiswerk"
         self._attr_name = f"Magister {kind_naam} Huiswerk"
         self._attr_icon = "mdi:book-education"
 
@@ -389,7 +389,7 @@ class KindVolgendeAfspraakSensor(SensorEntity):
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
         self._kind_naam = kind_naam
-        self._attr_unique_id = f"magister_{base_id}_volgende_afspraak"
+        self._attr_unique_id = f"{self._coordinator.entry_id}_magister_{base_id}_volgende_afspraak"
         self._attr_name = f"Magister {kind_naam} Volgende Afspraak"
         self._attr_icon = "mdi:clock-outline"
 
@@ -436,7 +436,7 @@ class KindCijfersSensor(SensorEntity):
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
         self._kind_naam = kind_naam
-        self._attr_unique_id = f"magister_{base_id}_cijfers"
+        self._attr_unique_id = f"{self._coordinator.entry_id}_magister_{base_id}_cijfers"
         self._attr_name = f"Magister {kind_naam} Cijfers"
         self._attr_icon = "mdi:certificate"
 
@@ -483,7 +483,7 @@ class KindAfsprakenSensor(SensorEntity):
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
         self._kind_naam = kind_naam
-        self._attr_unique_id = f"magister_{base_id}_afspraken"
+        self._attr_unique_id = f"{self._coordinator.entry_id}_magister_{base_id}_afspraken"
         self._attr_name = f"Magister {kind_naam} Afspraken"
         self._attr_icon = "mdi:calendar"
 
@@ -534,7 +534,7 @@ class KindRoosterWijzigingenSensor(SensorEntity):
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
         self._kind_naam = kind_naam
-        self._attr_unique_id = f"magister_{base_id}_wijzigingen"
+        self._attr_unique_id = f"{self._coordinator.entry_id}_magister_{base_id}_wijzigingen"
         self._attr_name = f"Magister {kind_naam} Roosterwijzigingen"
         self._attr_icon = "mdi:calendar-alert"
 
@@ -581,7 +581,7 @@ class KindOpdrachtenSensor(SensorEntity):
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
         self._kind_naam = kind_naam
-        self._attr_unique_id = f"magister_{base_id}_opdrachten"
+        self._attr_unique_id = f"{self._coordinator.entry_id}_magister_{base_id}_opdrachten"
         self._attr_name = f"Magister {kind_naam} Opdrachten"
         self._attr_icon = "mdi:clipboard-list"
 
@@ -628,7 +628,7 @@ class KindAbsentiesSensor(SensorEntity):
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
         self._kind_naam = kind_naam
-        self._attr_unique_id = f"magister_{base_id}_absenties"
+        self._attr_unique_id = f"{self._coordinator.entry_id}_magister_{base_id}_absenties"
         self._attr_name = f"Magister {kind_naam} Absenties"
         self._attr_icon = "mdi:account-clock"
 
@@ -675,7 +675,7 @@ class KindStudiewijzersSensor(SensorEntity):
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
         self._kind_naam = kind_naam
-        self._attr_unique_id = f"magister_{base_id}_studiewijzers"
+        self._attr_unique_id = f"{self._coordinator.entry_id}_magister_{base_id}_studiewijzers"
         self._attr_name = f"Magister {kind_naam} Studiewijzers"
         self._attr_icon = "mdi:book-open-variant"
 
@@ -721,7 +721,7 @@ class KindActiviteitenSensor(SensorEntity):
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
         self._kind_naam = kind_naam
-        self._attr_unique_id = f"magister_{base_id}_activiteiten"
+        self._attr_unique_id = f"{self._coordinator.entry_id}_magister_{base_id}_activiteiten"
         self._attr_name = f"Magister {kind_naam} Activiteiten"
         self._attr_icon = "mdi:calendar-star"
 
@@ -767,7 +767,7 @@ class KindAanmeldingenSensor(SensorEntity):
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
         self._kind_naam = kind_naam
-        self._attr_unique_id = f"magister_{base_id}_aanmeldingen"
+        self._attr_unique_id = f"{self._coordinator.entry_id}_magister_{base_id}_aanmeldingen"
         self._attr_name = f"Magister {kind_naam} Aanmeldingen"
         self._attr_icon = "mdi:school"
 
@@ -814,7 +814,7 @@ class KindSchoolStartVandaagSensor(SensorEntity):
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
         self._kind_naam = kind_naam
-        self._attr_unique_id = f"magister_{base_id}_school_start_vandaag"
+        self._attr_unique_id = f"{self._coordinator.entry_id}_magister_{base_id}_school_start_vandaag"
         self._attr_name = f"Magister {kind_naam} School Start Vandaag"
         self._attr_icon = "mdi:clock-start"
 
@@ -860,7 +860,7 @@ class KindSchoolEindeVandaagSensor(SensorEntity):
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
         self._kind_naam = kind_naam
-        self._attr_unique_id = f"magister_{base_id}_school_einde_vandaag"
+        self._attr_unique_id = f"{self._coordinator.entry_id}_magister_{base_id}_school_einde_vandaag"
         self._attr_name = f"Magister {kind_naam} School Einde Vandaag"
         self._attr_icon = "mdi:clock-end"
 
@@ -906,7 +906,7 @@ class KindVolgendeSchooldagSensor(SensorEntity):
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
         self._kind_naam = kind_naam
-        self._attr_unique_id = f"magister_{base_id}_volgende_schooldag"
+        self._attr_unique_id = f"{self._coordinator.entry_id}_magister_{base_id}_volgende_schooldag"
         self._attr_name = f"Magister {kind_naam} Volgende Schooldag"
         self._attr_icon = "mdi:calendar-arrow-right"
 
@@ -959,7 +959,7 @@ class KindVolgendeSchooldagStartSensor(SensorEntity):
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
         self._kind_naam = kind_naam
-        self._attr_unique_id = f"magister_{base_id}_volgende_schooldag_start"
+        self._attr_unique_id = f"{self._coordinator.entry_id}_magister_{base_id}_volgende_schooldag_start"
         self._attr_name = f"Magister {kind_naam} Volgende Schooldag Start"
         self._attr_icon = "mdi:clock-start"
 
@@ -1014,7 +1014,7 @@ class KindVolgendeSchooldagEindeSensor(SensorEntity):
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
         self._kind_naam = kind_naam
-        self._attr_unique_id = f"magister_{base_id}_volgende_schooldag_einde"
+        self._attr_unique_id = f"{self._coordinator.entry_id}_magister_{base_id}_volgende_schooldag_einde"
         self._attr_name = f"Magister {kind_naam} Volgende Schooldag Einde"
         self._attr_icon = "mdi:clock-end"
 

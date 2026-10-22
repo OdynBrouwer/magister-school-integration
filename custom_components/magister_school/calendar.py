@@ -14,6 +14,8 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
+_TZ = ZoneInfo("Europe/Amsterdam")
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -46,12 +48,10 @@ def _parse_dt(value: str | None) -> datetime | None:
 
     parsed_dt = datetime.fromisoformat(value)
 
-    # Ensure timezone info (use Amsterdam as default)
-    tz = ZoneInfo("Europe/Amsterdam")
     if parsed_dt.tzinfo is None:
-        parsed_dt = parsed_dt.replace(tzinfo=tz)
+        parsed_dt = parsed_dt.replace(tzinfo=_TZ)
     else:
-        parsed_dt = parsed_dt.astimezone(tz)
+        parsed_dt = parsed_dt.astimezone(_TZ)
     return parsed_dt
 
 
@@ -102,7 +102,7 @@ def _create_calendar_event(afspraak: dict) -> CalendarEvent:
 
 def _event_duration_seconds(event: CalendarEvent) -> float:
     """Return event duration in seconds, handling date or datetime types."""
-    tz = ZoneInfo("Europe/Amsterdam")
+    tz = _TZ
     start = event.start
     end = event.end
 
@@ -126,7 +126,7 @@ class KindKalenderSensor(CalendarEntity):
     def __init__(self, coordinator, kind_naam, base_id):
         self._coordinator = coordinator
         self._kind_naam = kind_naam
-        self._attr_unique_id = f"magister_{base_id}"
+        self._attr_unique_id = f"{coordinator.entry_id}_magister_{base_id}"
         self._attr_name = f"Magister {kind_naam} Kalender"
         self._attr_icon = "mdi:calendar"
 
@@ -153,7 +153,7 @@ class KindKalenderSensor(CalendarEntity):
             return current_events[0]
 
         next_events = self._get_events(
-            dt_util.now(), datetime.max.replace(tzinfo=ZoneInfo("Europe/Amsterdam"))
+            dt_util.now(), datetime.max.replace(tzinfo=_TZ)
         )
         return next_events[0] if next_events else None
 

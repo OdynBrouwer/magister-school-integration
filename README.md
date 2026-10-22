@@ -13,12 +13,22 @@ Integreer Magister schoolinformatie direct in je Home Assistant dashboard. Toon 
 - **👨‍👩‍👧‍👦 Multi-Kind Support** - Ondersteuning voor meerdere kinderen
 - **👤 Student Accounts** - Studenten kunnen hun eigen account gebruiken
 - **🔄 Automatische Updates** - Data wordt regelmatig ververst
-- **🎨 Lovelace Card** - Mooie weergave voor je dashboard ([separate card available](https://github.com/OdynBrouwer/magister-school-card))
-- **🧹 Automatische cleanup** – Verwijdert `_1`, `_2` etc. na updates
+- **🎨 Ingebouwde Lovelace Card** - Mooie dashboardweergave, automatisch meegeleverd en als dashboard-resource geregistreerd
+- **🔗 Unieke ID's per account** – Meerdere accounts naast elkaar zonder dubbele entities
 - **🔐 Multi-Account Support** - Gebruik meerdere accounts tegelijk zonder conflicts
 - **📖 Studiewijzers** - Volledige studiewijzer-teksten met behoud van lijstopmaak
 - **🚫 Uitval & Wijzigingen** - Vervallen lessen verschijnen ook in de roosterwijzigingen
 - **💾 Recorder-vriendelijk** - Omvangrijke attributen automatisch uitgesloten van de recorder-historie
+
+## ✨ Nieuw in v2.3.x
+
+- **Dashboard-card ingebouwd** — de Magister School Card wordt nu meegeleverd in `custom_components/magister_school/www/` en bij het opstarten automatisch als dashboard-resource geregistreerd. Geen aparte HACS-plugin meer nodig; integratie en card blijven altijd in versie gelijk.
+- **Unique IDs per config entry** — alle entities krijgen een ID die aan het config entry is gekoppeld, zodat meerdere accounts (en twee ouders met hetzelfde kind) geen `_1`-suffixen meer veroorzaken.
+- **Automatische migratie** — bestaande installaties behouden hun entity-ID's; de unique IDs worden eenmalig omgezet.
+- **`poll_interval` werkt nu echt** — de optie werd opgeslagen maar genegeerd; de coordinator gebruikt hem nu voor het update-interval (standaard 900 s = 15 minuten, bereik 60-86400).
+- **Inlogfouten herkend** — het script geeft een eigen exitcode bij een mislukte login, waardoor Home Assistant nu netjes een re-authenticatie start in plaats van de integratie stil `unavailable` te laten worden.
+- **Correcte tijdzone** — `ZoneInfo` wordt nog maar één keer op moduleniveau aangemaakt in plaats van in de event loop.
+- **Nettere entity-registry** — de oude, niet aan de integratie gebonden suffix-cleanup is verwijderd.
 
 ## ✨ Nieuw in v2.2.x
 
@@ -65,6 +75,18 @@ De integratie werkt met beide account types:
 
 Je kunt ook meerdere accounts tegelijk configureren zonder conflicts!
 
+### ⚙️ Opties
+
+Ga naar **Settings** → **Devices & Services** → **Magister** → **Configure**:
+
+| Optie | Standaard | Bereik | Betekenis |
+|---|---|---|---|
+| `poll_interval` | 900 | 60-86400 | Update-interval in seconden (900 = 15 minuten) |
+| `dagen_terug` | 0 | 0+ | Hoeveel dagen terug ophalen (0 = vandaag) |
+| `dagen_vooruit` | 14 | 0+ | Hoeveel dagen vooruit ophalen (14 = twee weken) |
+
+Wijzigingen worden direct toegepast: de integratie herlaadt zichzelf.
+
 ## 📊 Beschikbare Sensors
 
 Na installatie worden de volgende sensors aangemaakt:
@@ -86,19 +108,16 @@ Na installatie worden de volgende sensors aangemaakt:
 - `sensor.magister_[kind_naam]_activiteiten` - Activiteiten
 - `sensor.magister_[kind_naam]_aanmeldingen` - Aanmeldingen
 
-### 🧹 Automatische cleanup van duplicaat-entities (suffixes zoals `_1`, `_2`)
+### 🔗 Unieke ID's per account
 
-Na een update via HACS kan het soms voorkomen dat Home Assistant tijdelijk entities opnieuw registreert, wat leidt tot suffixes zoals `_1`, `_2`, etc. in entity-namen (bijv. `sensor.magister_jan_huiswerk_1`).
+Elke entity krijgt een unique ID die begint met het ID van het config entry
+(bijvoorbeeld `<entry_id>_magister_jan_huiswerk`). Daardoor kunnen meerdere
+accounts naast elkaar bestaan zonder dat Home Assistant `_1`, `_2`-suffixen
+toevoegt aan de entity-ID's.
 
-Vanaf versie **2.0.0** voert de integratie **automatisch een cleanup uit bij opstart**:
-- Entities met suffixes (`_1` t/m `_5`) worden hernoemd naar de originele naam **als die nog niet bestaat**.
-- Dit gebeurt **één keer per opstart**, zonder prestatieverlies.
-- Als er suffixes zijn opgeruimd, verschijnt er een melding in Home Assistant.
-
-> 💡 **Handmatig opruimen?**  
-> Verwijder oude entities handmatig via **Settings → Devices & Services → Entities**, of herstart Home Assistant om de automatische cleanup te activeren.
-
-Deze functionaliteit maakt gebruik van de **entity registry** en is volledig veilig.
+Bij het opstarten worden bestaande unique IDs eenmalig omgezet naar het nieuwe
+formaat. De **entity-ID's blijven daarbij ongewijzigd**, dus je dashboards,
+templates en automations blijven werken.
 
 ## 📊 Attributen & voorbeelden
 
@@ -279,12 +298,22 @@ automation:
 
 ## 🎨 Lovelace Card
 
-Voor een mooie dashboard weergave, installeer de [Magister School Lovelace Card](https://github.com/OdynBrouwer/magister-school-card):
+De **Magister School Card** zit sinds **v2.3.0** in deze integratie. Na het
+herstarten van Home Assistant staat de resource automatisch in je dashboard en
+kun je de kaart direct gebruiken — je hoeft dus geen aparte HACS-plugin te
+installeren.
 
 ```yaml
 type: custom:magister-school-card
 entity: sensor.magister_naam_kind
 ```
+
+De kaart wordt geserveerd vanaf `/magister_school/magister-school-card.js` en
+automatisch als dashboard-resource toegevoegd. Werkt de kaart niet meteen?
+Doe een harde refresh (Ctrl+F5) in de browser.
+
+> De losse repository [magister-school-card](https://github.com/OdynBrouwer/magister-school-card)
+> blijft bestaan voor ontwikkeling, maar de versie in deze integratie is leidend.
 ## 🐛 Problemen Oplossen
 
 ### Geen data zichtbaar
@@ -325,8 +354,10 @@ De repository volgt de HACS- en Home Assistant-validatieprocessen:
   `.ruff.toml`) om bestaande code niet onnodig te herschrijven.
 
 Voor indiening in de **HACS-defaultstore** is nog nodig:
-- `logo.png` (512×512) in een `brand/`-map — de `icon.png` is al aanwezig
-- Een formele HACS-aanvraag via de HACS-documentatie
+- Een goedgekeurde aanvraag in [hacs/default](https://github.com/hacs/default/pulls)
+- Een brand-entry in [home-assistant/brands](https://github.com/home-assistant/brands)
+  voor het logo vóór installatie (het icoon in `brand/icon.png` wordt gebruikt
+  zodra de integratie geïnstalleerd is)
 
 ## 🗃️ Database
 
@@ -339,6 +370,13 @@ Geen handmatige `recorder.exclude` meer nodig.
 ## 📄 Licentie
 
 Deze integratie is vrijgegeven onder de MIT licentie. Zie het [LICENSE](LICENSE) bestand voor details.
+
+### Credits
+
+`custom_components/magister_school/script/magister.py` is deels gebaseerd op
+[nlitsme/magister-tool](https://github.com/nlitsme/magister-tool) van
+Willem Hengeveld, eveneens MIT-gelicenseerd. De bijbehorende copyright- en
+licentietekst staat boven aan dat bestand.
 
 ## ⚠️ Disclaimer
 

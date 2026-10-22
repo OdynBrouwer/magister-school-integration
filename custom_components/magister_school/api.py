@@ -3,7 +3,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from .const import CONF_SCHOOL, CONF_USER, CONF_PASS
+from .const import AUTH_FAILED_MARKER, EXIT_AUTH_FAILED
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -62,7 +62,13 @@ class MagisterAPI:
             _LOGGER.error("Magister script timeout")
             raise TimeoutError("Magister script timeout") from None
         except subprocess.CalledProcessError as e:
-            _LOGGER.error("Magister script error: %s", e.stderr)
+            stderr = (e.stderr or "").strip()
+            if e.returncode == EXIT_AUTH_FAILED or AUTH_FAILED_MARKER in stderr:
+                _LOGGER.warning("Magister authentication failed")
+                raise AuthenticationRequired(
+                    "Magister authentication failed"
+                ) from None
+            _LOGGER.error("Magister script error (exit %s): %s", e.returncode, stderr)
             raise
         except json.JSONDecodeError as e:
             _LOGGER.error("Ongeldige JSON van Magister script: %s", e)

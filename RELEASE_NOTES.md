@@ -1,3 +1,33 @@
+# Release v2.3.0
+
+## GitHub release text
+
+Magister School Integration v2.3.0 levert de dashboard-card mee, geeft elke entity een unieke ID per account en verwerkt de reviewpunten van de HACS-defaultstore ([hacs/default#10760](https://github.com/hacs/default/pull/10760)).
+
+### Nieuw
+
+- **Ingebouwde dashboard-card**: de Magister School Card wordt meegeleverd in `custom_components/magister_school/www/`, geserveerd op `/magister_school/magister-school-card.js` en bij het opstarten automatisch als dashboard-resource geregistreerd. Integratie en card blijven zo altijd in versie gelijk; de losse card-plugin is niet meer nodig.
+- **`poll_interval` werkt nu echt**: de optie werd opgeslagen maar genegeerd. De coordinator gebruikt hem nu voor het update-interval (standaard 900 s, bereik 60-86400).
+
+### Opgelost
+
+- **Unique IDs per config entry**: alle sensoren en kalenders krijgen een unique ID die aan het config entry is gekoppeld. Meerdere accounts, of twee ouders met hetzelfde kind, geven geen `_1`-suffixen meer. Bestaande installaties worden eenmalig gemigreerd met behoud van hun entity-ID's.
+- **Re-authenticatie bij inlogfouten**: het script geeft nu een eigen exitcode (`2`) plus marker bij een mislukte login, zodat `AuthenticationRequired` echt wordt opgegooid. Een verlopen wachtwoord start nu netjes de reauth-flow in plaats van de integratie stil `unavailable` te maken.
+- **Timezone buiten de event loop**: `ZoneInfo("Europe/Amsterdam")` wordt één keer op moduleniveau aangemaakt in plaats van in de `event`-property en `async_get_events`.
+- **Entity-registry opgeschoond**: de suffix-cleanup die over de volledige entity registry liep is verwijderd; de unique-ID-fix maakt hem overbodig.
+- **Card**: hardcoded naam-mapping verwijderd, zodat de kaart voor iedereen de juiste naam toont.
+
+### Met dank aan
+
+- @frenck voor de grondige review van de HACS-aanvraag
+- @Niek (#39)
+
+## HACS update text
+
+Dashboard-card wordt nu meegeleverd en automatisch geregistreerd, unique IDs zijn per account gescheiden, `poll_interval` werkt en inlogfouten starten een re-authenticatie.
+
+## Previous release: v2.2.1
+
 # Release v2.2.1
 
 ## GitHub release text

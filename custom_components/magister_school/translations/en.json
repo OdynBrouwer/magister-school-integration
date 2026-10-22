@@ -22,40 +22,28 @@
     },
     "error": {
       "invalid_auth": "Invalid authentication",
-      "cannot_connect": "Cannot connect to Magister", 
+      "cannot_connect": "Cannot connect to Magister",
       "unknown": "Unexpected error occurred",
       "timeout": "Timeout connecting to Magister"
     },
     "abort": {
       "already_configured": "This account is already configured",
-      "reauth_successful": "Re-authentication successful", 
+      "reauth_successful": "Re-authentication successful",
       "invalid_auth": "Invalid authentication"
     }
   },
   "options": {
     "step": {
-      "init": {
+      "user": {
         "title": "Magister Options",
         "description": "Configure update settings",
         "data": {
-          "poll_interval": "Update interval (seconds)",
+          "poll_interval": "Update interval in seconds (60-86400, default 900 = 15 minutes)",
           "dagen_terug": "Days back in the past (0 = today)",
-          "dagen_vooruit": "Days forward into the future (14 = two weeks)" 
+          "dagen_vooruit": "Days forward into the future (14 = two weeks)"
         }
       }
     }
   },
-  "title": "Magister School",
-  "system_health": {
-    "info": {
-      "version": "Version",
-      "can_reach_server": "Magister server reachability"
-    }
-  },
-  "services": {
-    "refresh": {
-      "name": "Refresh", 
-      "description": "Force a refresh of Magister data"
-    }
-  }
+  "title": "Magister School"
 }

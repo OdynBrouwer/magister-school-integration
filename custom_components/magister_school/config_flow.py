@@ -3,7 +3,12 @@ from homeassistant import config_entries
 from homeassistant.core import callback
 import logging
 
-from .const import DOMAIN
+from .const import (
+    DEFAULT_POLL_INTERVAL,
+    DOMAIN,
+    MAX_POLL_INTERVAL,
+    MIN_POLL_INTERVAL,
+)
 from .api import MagisterAPI, AuthenticationRequired
 
 _LOGGER = logging.getLogger(__name__)
@@ -136,7 +141,15 @@ class MagisterOptionsFlow(config_entries.OptionsFlow):
 
         options_schema = vol.Schema(
             {
-                vol.Optional("poll_interval", default=self._config_entry.options.get("poll_interval", 300)): int,
+                vol.Optional(
+                    "poll_interval",
+                    default=self._config_entry.options.get(
+                        "poll_interval", DEFAULT_POLL_INTERVAL
+                    ),
+                ): vol.All(
+                    vol.Coerce(int),
+                    vol.Range(min=MIN_POLL_INTERVAL, max=MAX_POLL_INTERVAL),
+                ),
                 vol.Optional("dagen_terug", default=self._config_entry.options.get("dagen_terug", 0)): vol.All(int, vol.Range(min=0)),
                 vol.Optional("dagen_vooruit", default=self._config_entry.options.get("dagen_vooruit", 14)): vol.All(int, vol.Range(min=0)),
             }

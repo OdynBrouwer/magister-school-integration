@@ -34,28 +34,16 @@
   },
   "options": {
     "step": {
-      "init": {
+      "user": {
         "title": "Magister Opties",
         "description": "Configureer de update-instellingen",
         "data": {
-          "poll_interval": "Update interval (seconden)",
+          "poll_interval": "Update-interval in seconden (60-86400, standaard 900 = 15 minuten)",
           "dagen_terug": "Dagen terug in het verleden (0 = vandaag)",
           "dagen_vooruit": "Dagen vooruit in de toekomst (14 = twee weken)"
         }
       }
     }
   },
-  "title": "Magister School",
-  "system_health": {
-    "info": {
-      "version": "Versie",
-      "can_reach_server": "Bereikbaarheid Magister server"
-    }
-  },
-  "services": {
-    "refresh": {
-      "name": "Verversen",
-      "description": "Forceer een verversing van Magister data"
-    }
-  }
+  "title": "Magister School"
 }

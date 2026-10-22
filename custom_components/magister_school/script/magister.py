@@ -1,4 +1,28 @@
 #!/usr/bin/python3
+# ---------------------------------------------------------------------------
+# Portions of this file are based on nlitsme/magister-tool
+# (https://github.com/nlitsme/magister-tool).
+#
+# Copyright (c) 2021 Willem Hengeveld <itsme@xs4all.nl>
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+# ---------------------------------------------------------------------------
 import re
 import urllib.request
 import urllib.parse
@@ -16,6 +40,10 @@ import time as time_mod
 from pathlib import Path
 import argparse
 from concurrent.futures import ThreadPoolExecutor
+
+EXIT_AUTH_FAILED = 2
+AUTH_FAILED_MARKER = "AUTHENTICATION_FAILED"
+
 
 def dehtml(html):
     """
@@ -739,13 +767,15 @@ def main():
                 print("Login failed")
             else:
                 print("Login failed", file=sys.stderr)
-            sys.exit(1)
+                print(AUTH_FAILED_MARKER, file=sys.stderr)
+            sys.exit(EXIT_AUTH_FAILED)
         if not mg.access_token or mg.access_token == "":
             if not args.json:
                 print("Login appeared to succeed, but no access token was received.")
             else:
                 print("Login appeared to succeed, but no access token was received.", file=sys.stderr)
-            sys.exit(1)
+                print(AUTH_FAILED_MARKER, file=sys.stderr)
+            sys.exit(EXIT_AUTH_FAILED)
         store_access_token(args.cache, mg.access_token)
 
     # JSON output voor Home Assistant

@@ -834,5 +834,5 @@ var te,ie;class se extends m{constructor(){super(...arguments),this.renderOption
           ${"Geen"===e?O`<div class="empty-state">Geen komende schooldag gevonden</div>`:""}
         </div>
       </div>
-    `}}customElements.define("magister-school-card",re);
+    `}}customElements.get("magister-school-card")||customElements.define("magister-school-card",re);
 //# sourceMappingURL=magister-school-card.js.map

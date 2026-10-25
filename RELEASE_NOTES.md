@@ -4,6 +4,22 @@
 
 Magister School Integration v2.3.0 levert de dashboard-card mee, geeft elke entity een unieke ID per account en verwerkt de reviewpunten van de HACS-defaultstore ([hacs/default#10760](https://github.com/hacs/default/pull/10760)).
 
+
+### ⚠️ Migratie: oude losse card verwijderen
+
+De card zit nu in de integratie. Heb je de losse **Magister School Card** via
+HACS geïnstalleerd? Verwijder die na de update, anders worden er twee kopieën
+van dezelfde kaart geladen:
+
+1. Werk de integratie bij en herstart Home Assistant (de kaart doet het daarna al).
+2. Ga naar **HACS → Frontend → Magister School Card → menu → Remove**.
+3. Controleer bij **Instellingen → Dashboards → Resources** of er geen
+   `/hacsfiles/magister-school-card/...` meer tussen staat.
+4. Herstart Home Assistant en doe een harde refresh (Ctrl+F5).
+
+Je dashboards blijven werken: de kaartnaam `custom:magister-school-card` is
+hetzelfde.
+
 ### Nieuw
 
 - **Ingebouwde dashboard-card**: de Magister School Card wordt meegeleverd in `custom_components/magister_school/www/`, geserveerd op `/magister_school/magister-school-card.js` en bij het opstarten automatisch als dashboard-resource geregistreerd. Integratie en card blijven zo altijd in versie gelijk; de losse card-plugin is niet meer nodig.

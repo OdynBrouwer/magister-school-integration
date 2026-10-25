@@ -313,7 +313,9 @@ automatisch als dashboard-resource toegevoegd. Werkt de kaart niet meteen?
 Doe een harde refresh (Ctrl+F5) in de browser.
 
 > De losse repository [magister-school-card](https://github.com/OdynBrouwer/magister-school-card)
-> blijft bestaan voor ontwikkeling, maar de versie in deze integratie is leidend.
+> is **gearchiveerd** (v1.6.0). De versie in deze integratie is de enige
+> onderhouden versie. Heb je de plugin nog via HACS geïnstalleerd, verwijder hem
+> dan: HACS → Frontend → Magister School Card → Remove.
 ## 🐛 Problemen Oplossen
 
 ### Geen data zichtbaar

@@ -710,8 +710,8 @@ def _extract_sensor_helpers():
     source = open(path, encoding="utf-8").read()
     tree = ast.parse(source)
 
-    wanted_funcs = {"_get_school_lessen"}
-    wanted_consts = {"_NON_SCHOOL_SOORTEN"}
+    wanted_funcs = {"_get_school_lessen", "_is_school_time", "_parse_school_datetime"}
+    wanted_consts = {"_NON_SCHOOL_SOORTEN", "_SCHOOL_DAY_START", "_SCHOOL_DAY_END"}
     chunks = []
 
     for node in tree.body:
@@ -722,8 +722,10 @@ def _extract_sensor_helpers():
             if targets & wanted_consts:
                 chunks.append(ast.get_source_segment(source, node))
 
-    assert len(chunks) == 2, f"expected function + constant, got {len(chunks)}"
-    namespace = {"frozenset": frozenset}
+    assert len(chunks) == 6, f"expected 3 functions + 3 constants, got {len(chunks)}"
+    import datetime as _dt
+
+    namespace = {"frozenset": frozenset, "datetime": _dt.datetime, "time": _dt.time}
     exec("\n\n".join(chunks), namespace)
     return namespace["_get_school_lessen"]
 
@@ -800,6 +802,31 @@ class TestSchoolStartIncludesTimedAlgemeen:
             ]
         }
         assert self.get_lessen(kind_data) == []
+
+
+    def test_excludes_evening_algemeen_blocks(self):
+        """An 18:30-20:40 'Algemeen' block is an evening event, not school time."""
+        kind_data = {
+            "afspraken": [
+                {"soort": "Les", "start": "2026-10-28 08:35:00", "einde": "2026-10-28 10:55:00", "duurt_hele_dag": False, "is_uitval": False},
+                {"soort": "Algemeen", "start": "2026-10-28 15:25:00", "einde": "2026-10-28 16:15:00", "duurt_hele_dag": False, "is_uitval": False},
+                {"soort": "Algemeen", "start": "2026-10-28 18:30:00", "einde": "2026-10-28 19:10:00", "duurt_hele_dag": False, "is_uitval": False},
+                {"soort": "Algemeen", "start": "2026-10-28 20:00:00", "einde": "2026-10-28 20:40:00", "duurt_hele_dag": False, "is_uitval": False},
+            ]
+        }
+        lessen = self.get_lessen(kind_data)
+        assert max(a["einde"] for a in lessen) == "2026-10-28 16:15:00"
+
+    def test_excludes_early_morning_algemeen(self):
+        """A 04:00 block is not a school start either."""
+        kind_data = {
+            "afspraken": [
+                {"soort": "Algemeen", "start": "2026-10-28 04:00:00", "einde": "2026-10-28 05:00:00", "duurt_hele_dag": False, "is_uitval": False},
+                {"soort": "Les", "start": "2026-10-28 08:35:00", "einde": "2026-10-28 09:25:00", "duurt_hele_dag": False, "is_uitval": False},
+            ]
+        }
+        lessen = self.get_lessen(kind_data)
+        assert min(a["start"] for a in lessen) == "2026-10-28 08:35:00"
 
     def test_excludes_block_types(self):
         kind_data = {

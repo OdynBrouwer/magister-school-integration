@@ -22,7 +22,9 @@ Integreer Magister schoolinformatie direct in je Home Assistant dashboard. Toon 
 
 ## ✨ Nieuw in v2.3.1
 
-- **Schooltijden inclusief geplande activiteiten** — `school_start_vandaag`, `school_einde_vandaag` en de "volgende schooldag"-sensoren keken alleen naar afspraken met soort `Les`. Een nulmeting, mentorgesprek of "Studie na school" staat in Magister als soort `Algemeen`, maar betekent wél dat je kind op school moet zijn. Die tellen nu mee. Hele-dag-items (studiedag, vrije dag) en vervallen lessen blijven uitgesloten.
+- **Schooltijden inclusief geplande activiteiten** — `school_start_vandaag`, `school_einde_vandaag` en de "volgende schooldag"-sensoren keken alleen naar afspraken met soort `Les`. Een nulmeting, mentorgesprek of "Studie na school" staat in Magister als soort `Algemeen`, maar betekent wél dat je kind op school moet zijn. Die tellen nu mee.
+
+  Er geldt wel een **schoolvenster van 05:00 tot 18:00** voor niet-lesitems. Magister zet avondactiviteiten (bijvoorbeeld een open avond die in blokken als "10 leerlingen" wordt ingeroosterd) ook op `Algemeen`; zonder dat venster zou `school_einde_vandaag` naar 20:40 springen. Lessen tellen altijd, hele-dag-items (studiedag, vrije dag), vervallen lessen en bloktypes (`Roostervrij`, `Blokkade`, `Standby`) blijven uitgesloten.
 - **Duidelijke fout bij een ongeldige schoolnaam** — vul je de weergavenaam in (bijv. `Onderwijsgemeenschap Venlo & Omstreken`) in plaats van de URL-naam, dan meldt het formulier nu `invalid_school` met uitleg, in plaats van een nietszeggende "kan geen verbinding maken".
 - **Schoolnaam wordt genormaliseerd** — `Trevianum`, `trevianum.magister.net` en `https://trevianum.magister.net/` worden allemaal `trevianum`.
 

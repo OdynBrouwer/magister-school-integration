@@ -65,33 +65,47 @@ _NON_SCHOOL_SOORTEN = frozenset(
 )
 
 
-def _get_school_lessen(kind_data):
-    """Return timed school appointments, excluding cancelled and all-day items.
-
-    We filter on a real start time instead of on ``soort``. Magister also
-    schedules timed items as ``soort`` "Algemeen" — a nulmeting, a mentor
-    meeting or "Studie na school" — and those still mean the child has to be at
-    school, so they belong in the school start/end sensors.
-
-    Filtering on ``soort == "Les"`` used to drop them, which made
-    ``school_start_vandaag`` too late (see issue #43: the alarm clock went off at
-    the wrong time).
-
-    Whole-day notices (a study day, a free day) carry ``duurt_hele_dag`` and no
-    start time; they are excluded so they never shift school start/end.
-    """
-    afspraken = kind_data.get("afspraken", []) if kind_data else []
-    return [
-        a
-        for a in afspraken
-        if not a.get("is_uitval")
-        and not a.get("duurt_hele_dag")
-        and a.get("soort") not in _NON_SCHOOL_SOORTEN
-    ]
-
-
 def _parse_school_datetime(value):
     return datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+
+
+# Non-lesson appointments only count as school time when they fall inside this
+# window. Magister also schedules evening events as soort "Algemeen" (an open
+# evening booked in blocks such as "10 leerlingen"), and those must not push
+# school_einde_vandaag to 20:40.
+_SCHOOL_DAY_START = time(5, 0)
+_SCHOOL_DAY_END = time(18, 0)
+
+
+def _is_school_time(afspraak):
+    """Return True when an appointment means the child has to be at school."""
+    if afspraak.get("is_uitval") or afspraak.get("duurt_hele_dag"):
+        return False
+    if afspraak.get("soort") in _NON_SCHOOL_SOORTEN:
+        return False
+    if afspraak.get("soort") == "Les":
+        return True
+
+    # Timed non-lesson items: a nulmeting, a mentor meeting or "Studie na school"
+    # all mean the child must be at school (issue #43), but only during the
+    # school day.
+    try:
+        start = _parse_school_datetime(afspraak["start"]).time()
+    except (KeyError, TypeError, ValueError):
+        return False
+    return _SCHOOL_DAY_START <= start < _SCHOOL_DAY_END
+
+
+def _get_school_lessen(kind_data):
+    """Return appointments that count as school time for start/end sensors.
+
+    Lessons (``soort`` "Les") always count. Timed non-lesson items count only
+    inside the school-day window; filtering on ``soort == "Les"`` alone used to
+    drop a morning nulmeting, which made ``school_start_vandaag`` too late (see
+    issue #43: the alarm clock went off at the wrong time).
+    """
+    afspraken = kind_data.get("afspraken", []) if kind_data else []
+    return [a for a in afspraken if _is_school_time(a)]
 
 
 def _non_midnight_lessons(lessen, day):

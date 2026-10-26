@@ -166,16 +166,37 @@ Elk kind krijgt een **overzicht-sensor** `sensor.magister_[kind_naam]`
 
 ### Schooltijden
 
-| Attribuut | Voorbeeld |
-|---|---|
-| `school_start_vandaag` | `08:35` |
-| `school_einde_vandaag` | `15:15` |
-| `volgende_schooldag` | `2026-09-14` |
-| `volgende_schooldag_start` | `08:35` |
-| `volgende_schooldag_einde` | `14:25` |
-| `volgende_afspraak` | `2026-09-14 08:35:00` |
-| `volgende_vak` | `Natuurkunde` |
-| `lessen_vandaag` | Lijst met lessen van vandaag |
+| Attribuut | Voorbeeld | Betekenis |
+|---|---|---|
+| `school_start_vandaag` | `08:35` | Vroegste moment waarop je kind aanwezig moet zijn |
+| `school_einde_vandaag` | `15:15` | Einde van de laatste **echte les** |
+| `volgende_schooldag` | `2026-09-14` | Eerstvolgende dag met lessen |
+| `volgende_schooldag_start` | `08:35` | Start op die dag |
+| `volgende_schooldag_einde` | `14:25` | Einde van de laatste les op die dag |
+| `volgende_afspraak` | `2026-09-14 08:35:00` | Eerstvolgende item in de agenda |
+| `volgende_vak` | `Natuurkunde` | Vak van die afspraak |
+| `lessen_vandaag` | Lijst | Lessen van vandaag |
+
+#### Hoe de start- en eindtijd bepaald worden
+
+Start en eind volgen bewust **niet** dezelfde regel:
+
+| | Wat telt mee | Waarom |
+|---|---|---|
+| **Start** | lessen **en** afspraken met een vak of docent | Een nulmeting om 08:00 betekent dat je kind er om 08:00 moet zijn, ook als de eerste les om 08:35 begint |
+| **Eind** | alleen echte lessen | Een optioneel studie-uur of avondactiviteit betekent niet dat je kind "tot 20:40 op school zit" |
+
+Niet-lesitems tellen alleen als ze aan **alle** voorwaarden voldoen:
+
+1. een **vak of docent** hebben (dus geen lokaal-/groepsreservering zijn)
+2. binnen **05:00–18:00** vallen
+3. **niet** elke werkdag terugkeren (`herhalend_elke_werkdag` is onwaar)
+4. geen bloktype zijn (`Roostervrij`, `Blokkade`, `Blokkade Lokaal`, `Blokkade Klas`, `Standby`)
+
+Vervallen items (`is_uitval`) en hele-dag-items (`duurt_hele_dag`) tellen nooit mee.
+
+> 💡 Gebruik `school_start_vandaag` voor je wekker en `school_einde_vandaag` voor
+> "wanneer kan ik mijn kind ophalen?". Ze meten bewust verschillende dingen.
 
 ### Afspraken & roosterwijzigingen
 
@@ -325,20 +346,81 @@ herstarten van Home Assistant staat de resource automatisch in je dashboard en
 kun je de kaart direct gebruiken — je hoeft dus geen aparte HACS-plugin te
 installeren.
 
+De kaart wordt geserveerd vanaf `/magister_school/magister-school-card.js`.
+Werkt hij niet meteen? Doe een harde refresh (Ctrl+F5).
+
+### Volledig voorbeeld
+
 ```yaml
 type: custom:magister-school-card
-entity: sensor.magister_naam_kind
-# hide_boekingen: true   # verberg Studie na school / avondblokken
+entity: sensor.magister_voornaam_achternaam
+layout: auto                 # auto | grid-1 | grid-2 | grid-3 | grid-4 | grid-5 | grid-6
+hide_layout_selector: true   # verberg de kolomkiezer
+hide_kind_info: false        # true = naam/klas/profiel-balk verbergen
+hide_boekingen: false        # true = Studie na school en avondblokken verbergen
+show_widgets:
+  - stats
+  - week_schooltijden
+  - rooster_meta
+  - rooster_morgen
+  - volgende_les
+  - huiswerk
+  - cijfers
+  - voortgangscijfers
+  - opdrachten
+  - wijzigingen
+  - schooltijden
+  - volgende_schooldag
 ```
 
-De kaart wordt geserveerd vanaf `/magister_school/magister-school-card.js` en
-automatisch als dashboard-resource toegevoegd. Werkt de kaart niet meteen?
-Doe een harde refresh (Ctrl+F5) in de browser.
+### `hide_boekingen`: lessen, afspraken en boekingen
+
+Magister zet drie verschillende dingen in je agenda. De integratie geeft elk item
+een `categorie`, zodat je ze uit elkaar kunt houden:
+
+| `categorie` | Wat het is | Voorbeeld | Heeft vak/docent |
+|---|---|---|---|
+| `les` | een echt lesuur | `wisb - wld - g5.wisb1` | ja |
+| `afspraak` | een echte afspraak | nulmeting, mentorgesprek | ja (minstens één) |
+| `boeking` | lokaal-/groepsreservering | `Studie na school`, `10 leerlingen` | nee |
+
+Die laatste groep is geen afspraak *voor je kind*: het is een lokaal dat gereserveerd
+is, bijvoorbeeld voor een studie-uur of een avondactiviteit. Standaard blijven ze
+zichtbaar met een 📌 **Boeking**-badge; met `hide_boekingen: true` verdwijnen ze
+uit de roosterwidgets (`rooster_vandaag`, `rooster_meta`, `rooster_morgen`).
+
+Heb je een zoontje dat 's ochtends vroeg een nulmeting heeft? Die valt onder
+`afspraak` en telt dus gewoon mee voor `school_start_vandaag` — ook met
+`hide_boekingen: true`.
+
+### Zelf filteren in templates
+
+```jinja2
+{# alleen echte lessen, ongeacht de kaartinstelling #}
+{% set lessen = state_attr('sensor.magister_voornaam_achternaam_afspraken', 'afspraken')
+                 | selectattr('categorie', 'eq', 'les') | list %}
+
+{# wat staat er vandaag nog als reservering in de agenda? #}
+{% set boekingen = state_attr('sensor.magister_voornaam_achternaam_afspraken', 'afspraken')
+                   | selectattr('categorie', 'eq', 'boeking')
+                   | selectattr('start', 'match', now().strftime('%Y-%m-%d')) | list %}
+{{ boekingen | count }} reservering(en) vandaag
+```
 
 > De losse repository [magister-school-card](https://github.com/OdynBrouwer/magister-school-card)
-> is **gearchiveerd** (v1.6.0). De versie in deze integratie is de enige
-> onderhouden versie. Heb je de plugin nog via HACS geïnstalleerd, verwijder hem
-> dan: HACS → Frontend → Magister School Card → Remove.
+> is **gearchiveerd** (v1.6.0). De kaartbron staat nu in [card/](card) in deze
+> repository en bouwt naar `custom_components/magister_school/www/`, zodat bron en
+> bundel niet kunnen afwijken. Heb je de plugin nog via HACS geïnstalleerd,
+> verwijder hem dan: HACS → Frontend → Magister School Card → Remove.
+
+### Zelf bouwen
+
+```bash
+cd card
+npm install
+npm run build     # schrijft naar ../custom_components/magister_school/www/
+```
+
 ## 🐛 Problemen Oplossen
 
 ### Geen data zichtbaar

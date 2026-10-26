@@ -661,6 +661,27 @@ def _is_elke_werkdag(item):
     return bool(dagelijks.get("IsElkeWerkdag"))
 
 
+def _appointment_category(item):
+    """Classify an appointment as a lesson, a real appointment or a booking.
+
+    Magister uses soort "Algemeen" for two very different things:
+
+    - a real appointment the child has to attend (a nulmeting, a mentor
+      meeting), which always carries a subject or a teacher;
+    - a room or group booking that is optional or background information
+      ("Studie na school" in a study room, an evening booked as "10 leerlingen"),
+      which carries neither.
+
+    Exposing the difference lets the dashboard and templates filter on it,
+    instead of every consumer having to redo this check.
+    """
+    if infotstr(item.get("Type", 0), AFSPRAAK_TYPE) == "Les":
+        return "les"
+    has_subject = bool(item.get("Vak")) or bool(object_list(item.get("Vakken")))
+    has_teacher = bool(item.get("Docent")) or bool(object_list(item.get("Docenten")))
+    return "afspraak" if (has_subject or has_teacher) else "boeking"
+
+
 def _map_rooster_item(item, appointment_history, kindid):
     """Map een afspraak-/roosterwijziging-item naar de sensor-dict."""
     return {
@@ -698,6 +719,7 @@ def _map_rooster_item(item, appointment_history, kindid):
         # veld is dat verschil in Home Assistant niet te zien.
         "herhalend": _is_herhalend(item),
         "herhalend_elke_werkdag": _is_elke_werkdag(item),
+        "categorie": _appointment_category(item),
     }
 
 def _appointment_key(kind_id, item):

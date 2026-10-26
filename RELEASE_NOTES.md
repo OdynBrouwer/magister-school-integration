@@ -16,6 +16,10 @@ Magister School Integration v2.3.1 splitst de schooltijden in een start- en eind
 - **Herhaling-velden ontbraken op de afspraken-sensor** - de velden `herhalend` en `herhalend_elke_werkdag` waren alleen aan de gedeelde mapper toegevoegd, terwijl `afspraken` nog een eigen inline dict gebruikte. Beide lijsten gaan nu door `_map_rooster_item`, zodat velden niet meer kunnen uiteenlopen.
 - **Dubbele lokaalnaam** - `lokaal` gaf "440, 440" omdat `Lokatie` de eerste `Lokalen`-vermelding herhaalt.
 
+- **`categorie` op elke afspraak** - `les`, `afspraak` of `boeking`. Magister gebruikt `Algemeen` voor twee verschillende dingen: een echte afspraak (nulmeting, mentorgesprek, altijd met vak of docent) en een lokaal-/groepsboeking ("Studie na school", avondblokken als "10 leerlingen", zonder vak en docent). Dit maakt de ontdekking bruikbaar in templates en automations.
+- **Kaartoptie `hide_boekingen`** - verbergt die boekingen in de roosterwidgets; standaard uit. Zonder de optie blijven ze zichtbaar met een `Boeking`-badge.
+- **Kaartbron verhuisd naar `card/`** - de kaart wordt nu in deze repository gebouwd naar `custom_components/magister_school/www/`, zodat bron en bundel niet meer kunnen afwijken.
+
 ### Bijdragen van @Niek
 
 - **Timeout-herstel (#42)** - een mislukte fetch zette de integratie stil. Nu: 15 s HTTP-timeout, 90 s per fetch, een retry na 2 s bij een timeout. Bij aanhoudend falen verschijnt een **Settings -> Repairs**-melding per account die vanzelf verdwijnt zodra er weer data is. Verlopen tokens worden niet meer geaccepteerd.

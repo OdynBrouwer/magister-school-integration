@@ -112,7 +112,13 @@ def _counts_for_start(afspraak):
         return True
     if afspraak.get("herhalend_elke_werkdag"):
         return False
-    if not (afspraak.get("vak") or afspraak.get("docent")):
+    # "boeking" = a room/group booking without a subject or teacher; only a real
+    # appointment ("afspraak") means the child has to be at school earlier.
+    # Fall back to the subject/teacher check when categorie is absent.
+    categorie = afspraak.get("categorie")
+    if categorie is None:
+        categorie = "afspraak" if (afspraak.get("vak") or afspraak.get("docent")) else "boeking"
+    if categorie == "boeking":
         return False
     try:
         start = _parse_school_datetime(afspraak["start"]).time()

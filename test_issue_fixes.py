@@ -250,8 +250,8 @@ class TestVerrijkteVelden:
         assert '"opmerking": item.get("Opmerking")' in content
         assert '"is_online": bool(item.get("IsOnlineDeelname"' in content
         assert '"duurt_hele_dag": bool(item.get("DuurtHeleDag"' in content
-        assert '"docentcode": ", ".join(filter(None, ([item.get("Docent"' in content
-        assert '"vak_id": ", ".join(filter(None, ([str(item.get("Vak"' in content
+        assert '"docentcode": ", ".join(filter(None, ([object_data(item.get("Docent"' in content
+        assert '"vak_id": ", ".join(filter(None, ([str(object_data(item.get("Vak"' in content
 
     def test_overview_sensor_toont_klas_profiel(self):
         sensor_path = os.path.join(
@@ -288,7 +288,7 @@ class TestVoortgangscijfers:
     def test_leest_platte_items_met_kolom(self):
         content = self._source()
         # Echte structuur: platte 'items' (kleine letter) met details in 'kolom'
-        assert 'get("items", [])' in content
+        assert 'response_items(vc, warnings, "voortgangscijfers", "items")' in content
         assert 'cijfer.get("kolom")' in content
         assert 'kolom.get("studievakId")' in content
         assert 'kolom.get("weegfactor")' in content
@@ -337,6 +337,174 @@ def test_studiewijzer_full_text(monkeypatch, response, expected):
     assert len(mg._raw_dump) == 1
 
 
+@pytest.fixture
+def magister_refresh(monkeypatch, tmp_path, capsys):
+    """Run the real fetch/parser with deterministic responses for two students."""
+    import json
+    from pathlib import Path
+
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    monkeypatch.setattr(sys, "argv", [script_path, "--json", "--accesstoken", "test-token",
+                                      "--schoolserver", "example.invalid"])
+    responses = {
+        "/account": {"Persoon": {"Id": 1}},
+        "/kinderen": {"Items": [{"Id": 2, "Roepnaam": "First"}, {"Id": 3, "Roepnaam": "Second"}]},
+        "/aanmeldingen": {"Items": [{"Id": 30, "Start": "2020-01-01", "Einde": "2099-01-01"}]},
+        "/afspraken": {"Items": [{"Start": "2026-10-12T08:00:00Z", "Omschrijving": "Math", "Status": 1}]},
+        "/cijfers/laatste": {"items": [{"waarde": "8"}]},
+        "/cijfers": {"items": [{"waarde": "7", "kolom": {"naam": "wi101"}}]},
+        "/studiewijzers": {"Items": [{"Id": 10}, {"Id": 11}, {"Id": 12}]},
+        "/studiewijzers/10": {"Titel": "Other", "Onderdelen": {"Items": []}},
+        "/studiewijzers/11": {"Titel": "Valid", "Onderdelen": {"Items": [{"Id": 20, "Titel": "Week 1"}]}},
+        "/studiewijzers/12": {"Titel": "Empty", "Onderdelen": {"Items": []}},
+        "/onderdelen/20": {"Omschrijving": "<p>Full section text</p>"},
+    }
+
+    def run(overrides=None):
+        current = {**responses, **(overrides or {})}
+
+        def request(client, url):
+            path = magister.urllib.parse.urlsplit(url).path
+            return next((value for suffix, value in current.items() if path.endswith(suffix)), {"Items": []})
+
+        monkeypatch.setattr(magister.Magister, "httpreq", request)
+        magister.main()
+        return json.loads(capsys.readouterr().out)
+
+    return run
+
+
+@pytest.mark.parametrize("broken_guide", [
+    {}, {"Fouttype": "OnvoldoendePrivileges"}, b"<html>Service unavailable</html>",
+    {"Onderdelen": None}, {"Onderdelen": []}, {"Onderdelen": {}},
+    {"Onderdelen": {"Items": None}}, {"Onderdelen": {"Items": {}}},
+])
+def test_missing_study_guide_sections_preserve_refresh(magister_refresh, broken_guide):
+    data = magister_refresh({"/studiewijzers/10": broken_guide})
+    assert data["data_warnings"] == {"studiewijzers": 2}
+    for name in ("First", "Second"):
+        assert data["kinderen"][name]["afspraken"][0]["omschrijving"] == "Math"
+        assert data["cijfers"][name][0]["waarde"] == "8"
+        guides = data["studiewijzers"][name]
+        assert [guide["titel"] for guide in guides] == ["Valid", "Empty"]
+        assert guides[0]["onderdelen"][0]["omschrijving"].strip() == "Full section text"
+        assert guides[1]["onderdelen"] == []
+
+
+@pytest.mark.parametrize("endpoint,section,key", [
+    ("/aanmeldingen", "aanmeldingen", "Items"),
+    ("/afspraken", "afspraken", "Items"),
+    ("/roosterwijzigingen", "roosterwijzigingen", "Items"),
+    ("/cijfers/laatste", "cijfers", "items"),
+    ("/cijfers", "voortgangscijfers", "items"),
+    ("/absenties", "absenties", "Items"),
+    ("/opdrachten", "opdrachten", "Items"),
+    ("/activiteiten", "activiteiten", "Items"),
+    ("/studiewijzers", "studiewijzers", "Items"),
+])
+@pytest.mark.parametrize("bad_items", ["missing", None, {}, "invalid", 42, [None, "invalid", {}]])
+def test_invalid_collections_are_reported_without_losing_other_data(magister_refresh, endpoint, section, key, bad_items):
+    data = magister_refresh({endpoint: {} if bad_items == "missing" else {key: bad_items}})
+    assert data["data_warnings"][section] == (2 * len(bad_items) if isinstance(bad_items, list) else 2)
+    assert set(data["kinderen"]) == {"First", "Second"}
+    if section != "afspraken":
+        assert data["kinderen"]["First"]["afspraken"][0]["omschrijving"] == "Math"
+    if section != "cijfers":
+        assert data["cijfers"]["Second"][0]["waarde"] == "8"
+
+
+def test_valid_empty_collections_do_not_warn(magister_refresh):
+    data = magister_refresh()
+    assert "data_warnings" not in data
+    assert data["studiewijzers"]["First"][-1]["onderdelen"] == []
+
+
+@pytest.mark.parametrize("value", [None, [], "invalid"])
+def test_optional_nested_fields_are_safe(magister_refresh, value):
+    lesson = {"Start": "2026-10-12T08:00:00Z", "Vak": value, "Docent": value,
+              "Vakken": value, "Docenten": value, "Lokalen": value}
+    data = magister_refresh({
+        "/afspraken": {"Items": [lesson]}, "/roosterwijzigingen": {"Items": [lesson]},
+        "/cijfers/laatste": {"items": [{"waarde": "8", "vak": value}]},
+        "/cijfers": {"items": [{"waarde": "7", "kolom": value}]},
+        "/absenties": {"Items": [{"Afspraak": value}]},
+    })
+    assert data["kinderen"]["First"]["afspraken"][0]["vak"] == ""
+    assert data["cijfers"]["First"][0]["waarde"] == "8"
+    assert data["voortgangscijfers"]["First"][0]["waarde"] == "7"
+    assert data["absenties"]["First"][0]["afspraak"] == ""
+
+
+def test_malformed_records_do_not_discard_valid_siblings(magister_refresh):
+    data = magister_refresh({"/cijfers/laatste": {"items": [None, {"waarde": "8"}]},
+                             "/studiewijzers": {"Items": [{}, {"Id": 11}]},
+                             "/studiewijzers/11": {"Titel": "Valid", "Onderdelen": {"Items": [{}, {"Id": 20}]}}})
+    assert data["data_warnings"] == {"cijfers": 2, "studiewijzers": 4}
+    assert data["cijfers"]["First"][0]["waarde"] == "8"
+    assert data["studiewijzers"]["Second"][0]["onderdelen"][0]["omschrijving"].strip() == "Full section text"
+
+
+@pytest.mark.parametrize("endpoint,response", [
+    ("/account", {}), ("/account", {"Persoon": None}), ("/account", {"Persoon": {}}),
+    ("/kinderen", {}), ("/kinderen", {"Items": [None]}), ("/kinderen", {"Items": [{}]}),
+    ("/kinderen", {"Fouttype": "OtherFailure"}),
+])
+def test_invalid_identity_fails_explicitly(magister_refresh, endpoint, response):
+    with pytest.raises(ValueError, match="Magister (account|children) response"):
+        magister_refresh({endpoint: response})
+
+
+@pytest.mark.parametrize("endpoint", ["/account", "/kinderen", "/cijfers", "/studiewijzers/10"])
+def test_expired_session_is_not_hidden(magister_refresh, endpoint):
+    with pytest.raises(RuntimeError, match="Magister session expired"):
+        magister_refresh({endpoint: b"SecurityToken Expired"})
+
+
+def test_student_account_permission_response_is_still_supported(magister_refresh):
+    data = magister_refresh({"/account": {"Persoon": {"Id": 1, "Roepnaam": "Student"}},
+                             "/kinderen": {"Fouttype": "OnvoldoendePrivileges"}})
+    assert set(data["kinderen"]) == {"Student"}
+    assert "data_warnings" not in data
+
+
+def test_http_401_is_not_converted_to_empty_data():
+    from unittest.mock import Mock
+
+    client = magister.Magister(SimpleNamespace(xsrftoken=None, accesstoken=None, debug=False,
+                                              magisterserver="example.invalid", schoolserver="example.invalid"))
+    client.opener.open = Mock(side_effect=magister.urllib.error.HTTPError(
+        "https://example.invalid/api/account", 401, "Unauthorized", {}, None,
+    ))
+    with pytest.raises(magister.urllib.error.HTTPError) as caught:
+        client.req("account")
+    assert caught.value.code == 401
+
+
+@pytest.mark.parametrize("skipped", [0, 2])
+def test_api_reports_incomplete_sections(monkeypatch, caplog, skipped):
+    import json
+    from unittest.mock import Mock
+
+    monkeypatch.setitem(sys.modules, "magister_api_test.const", SimpleNamespace(
+        CONF_SCHOOL="school", CONF_USER="user", CONF_PASS="pass",
+        EXIT_AUTH_FAILED=77, AUTH_FAILED_MARKER="AUTHENTICATION_FAILED",
+    ))
+    api_path = os.path.join(os.path.dirname(script_path), "..", "api.py")
+    api_spec = importlib.util.spec_from_file_location("magister_api_test.api", api_path)
+    api = importlib.util.module_from_spec(api_spec)
+    api_spec.loader.exec_module(api)
+    data = {"kinderen": {"Student": {}}}
+    if skipped:
+        data["data_warnings"] = {"studiewijzers": skipped}
+    monkeypatch.setattr(api.subprocess, "run", Mock(return_value=SimpleNamespace(stdout=json.dumps(data))))
+    assert api.MagisterAPI("school", "user", "password").get_data() == data
+    assert bool(caplog.records) is bool(skipped)
+    if skipped:
+        assert caplog.records[0].getMessage() == (
+            "Incomplete Magister data (invalid collections/records per section): {'studiewijzers': 2}"
+        )
+
+
 class TestOnverwachtAntwoord:
     """Magister antwoordt soms met HTML of een lege body in plaats van JSON.
 
@@ -378,8 +546,8 @@ class TestOnverwachtAntwoord:
     def test_main_guardt_afspraken_en_wijzigingen(self):
         with open(script_path, encoding="utf-8") as f:
             content = f.read()
-        assert "if not isinstance(afspraken, dict)" in content
-        assert "if not isinstance(wijzigingen, dict)" in content
+        assert 'response_items(afspraken, warnings, "afspraken")' in content
+        assert 'response_items(wijzigingen, warnings, "roosterwijzigingen")' in content
 
 
 class TestUitvalInWijzigingen:

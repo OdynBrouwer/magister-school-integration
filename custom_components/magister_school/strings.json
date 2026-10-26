@@ -32,7 +32,7 @@
       "invalid_auth": "Ongeldige gebruikersnaam, wachtwoord of 2FA-sleutel.",
       "cannot_connect": "Kan geen verbinding maken met Magister.",
       "unknown": "Onbekende fout, controleer de logbestanden.",
-      "invalid_school": "Ongeldige schoolnaam. Gebruik het deel vóór .magister.net, bijvoorbeeld 'trevianum' (zonder spaties of &)."
+      "invalid_school": "Ongeldige schoolnaam. Gebruik het deel vÃ³Ã³r .magister.net, bijvoorbeeld 'trevianum' (zonder spaties of &)."
     },
     "abort": {
       "already_configured": "Deze Magister gebruiker is al geconfigureerd.",
@@ -50,6 +50,12 @@
           "dagen_vooruit": "Dagen vooruit in de toekomst (14 = twee weken)"
         }
       }
+    }
+  },
+  "issues": {
+    "fetch_failed": {
+      "title": "Magister-data niet beschikbaar: {name}",
+      "description": "Magister kon geen actuele data ophalen: {error}\n\nDe integratie probeert het automatisch opnieuw. Controleer bij aanhoudende problemen je internetverbinding en of je kunt inloggen bij Magister. Deze melding verdwijnt zodra er weer data beschikbaar is."
     }
   }
 }

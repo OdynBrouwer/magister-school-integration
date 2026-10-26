@@ -65,9 +65,8 @@ _NON_SCHOOL_SOORTEN = frozenset(
 )
 
 
-# Timed non-lesson items only count as school time inside this window. Magister
-# also schedules evening events as soort "Algemeen" (an open evening booked in
-# blocks such as "10 leerlingen", 18:30-20:40).
+# Non-lesson items only count as school time inside this window, so an evening
+# event can never be mistaken for the start of the school day.
 _SCHOOL_DAY_START = time(5, 0)
 _SCHOOL_DAY_END = time(18, 0)
 
@@ -97,18 +96,24 @@ def _counts_for_start(afspraak):
     """Return True when an appointment can move the school start earlier.
 
     A nulmeting or mentor meeting is scheduled as soort "Algemeen" but still
-    means the child must be at school on time (issue #43). Recurring optional
-    items ("Studie na school", every working day) and evening blocks are not
-    part of the compulsory schedule, so they are ignored here.
+    means the child must be at school on time (issue #43).
+
+    Magister also uses soort "Algemeen" for room and group bookings that are not
+    part of the compulsory schedule: "Studie na school" (every working day in a
+    study room) and evening blocks such as "10 leerlingen". Those carry no
+    subject and no teacher, so we require at least one of the two. Real
+    appointments always have a subject; lessons have both.
     """
     if afspraak.get("is_uitval") or afspraak.get("duurt_hele_dag"):
-        return False
-    if afspraak.get("herhalend_elke_werkdag"):
         return False
     if afspraak.get("soort") in _NON_SCHOOL_SOORTEN:
         return False
     if afspraak.get("soort") == "Les":
         return True
+    if afspraak.get("herhalend_elke_werkdag"):
+        return False
+    if not (afspraak.get("vak") or afspraak.get("docent")):
+        return False
     try:
         start = _parse_school_datetime(afspraak["start"]).time()
     except (KeyError, TypeError, ValueError):

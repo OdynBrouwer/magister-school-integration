@@ -3,7 +3,9 @@ import json
 import logging
 import os
 import re
+import time
 from pathlib import Path
+
 from .const import AUTH_FAILED_MARKER, EXIT_AUTH_FAILED
 
 _LOGGER = logging.getLogger(__name__)
@@ -75,32 +77,37 @@ class MagisterAPI:
         else:
             env.pop("MAGISTER_TOTP_SECRET", None)
 
-        try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=30,
-                check=True,
-                env=env,
-            )
-            return json.loads(result.stdout)
+        for attempt in range(2):
+            started = time.monotonic()
+            try:
+                result = subprocess.run(
+                    cmd, capture_output=True, text=True, timeout=90, check=True, env=env,
+                )
+            except subprocess.TimeoutExpired:
+                # subprocess.run kills and waits for the child before raising.
+                error = "Magister script timed out after 90 seconds"
+            except subprocess.CalledProcessError as err:
+                stderr = (err.stderr or "").strip()
+                if (
+                    err.returncode == EXIT_AUTH_FAILED
+                    or AUTH_FAILED_MARKER in stderr
+                ):
+                    _LOGGER.warning("Magister authentication failed")
+                    raise AuthenticationRequired(
+                        "Magister authentication failed"
+                    ) from None
+                if err.returncode != 75:  # EX_TEMPFAIL: retry only script timeouts.
+                    _LOGGER.error(
+                        "Magister script error (exit %s): %s", err.returncode, stderr
+                    )
+                    raise
+                lines = stderr.splitlines()
+                error = lines[-1] if lines else "Magister HTTP request timed out"
+            else:
+                _LOGGER.debug("Magister fetch completed in %.1fs", time.monotonic() - started)
+                return json.loads(result.stdout)
 
-        except subprocess.TimeoutExpired:
-            _LOGGER.error("Magister script timeout")
-            raise TimeoutError("Magister script timeout") from None
-        except subprocess.CalledProcessError as e:
-            stderr = (e.stderr or "").strip()
-            if e.returncode == EXIT_AUTH_FAILED or AUTH_FAILED_MARKER in stderr:
-                _LOGGER.warning("Magister authentication failed")
-                raise AuthenticationRequired(
-                    "Magister authentication failed"
-                ) from None
-            _LOGGER.error("Magister script error (exit %s): %s", e.returncode, stderr)
-            raise
-        except json.JSONDecodeError as e:
-            _LOGGER.error("Ongeldige JSON van Magister script: %s", e)
-            raise
-        except Exception as e:
-            _LOGGER.error("Onverwachte fout: %s", e)
-            raise
+            if attempt:
+                raise TimeoutError(error) from None
+            _LOGGER.debug("%s; retrying once in 2 seconds", error)
+            time.sleep(2)

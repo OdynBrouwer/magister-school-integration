@@ -11,5 +11,5 @@ MAX_POLL_INTERVAL = 86400
 
 # Exit code used by script/magister.py when authentication fails, so the
 # integration can distinguish a login problem from other script errors.
-EXIT_AUTH_FAILED = 2
+EXIT_AUTH_FAILED = 77
 AUTH_FAILED_MARKER = "AUTHENTICATION_FAILED"

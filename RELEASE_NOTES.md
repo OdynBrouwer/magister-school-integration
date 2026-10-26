@@ -2,26 +2,31 @@
 
 ## GitHub release text
 
-Magister School Integration v2.3.1 laat de schooltijdsensoren ook geplande activiteiten meenemen en geeft een duidelijke melding wanneer de schoolnaam geen geldige URL-naam is.
-
-### Ook in deze release (bijdragen van @Niek)
-
-- **Timeout-herstel (#42)**: één mislukte fetch zette de integratie stil. Nu is er een HTTP-timeout van 15 s, een limiet van 90 s per fetch en één retry na 2 seconden bij een timeout. Verschillende endpoints worden niet opnieuw geprobeerd. Bij falen verschijnt een **Settings → Repairs**-melding per account, die vanzelf verdwijnt zodra er weer data is. Verlopen tokens worden niet meer geaccepteerd.
-- **Weerbaar tegen incomplete Magister-data (#44)**: een studiewijzer zonder `Onderdelen` liet de hele refresh crashen met `KeyError`. Alle optionele collecties (rooster, wijzigingen, cijfers, voortgangscijfers, absenties, opdrachten, activiteiten, aanmeldingen, studiewijzers) worden nu met gedeelde guards uitgelezen: geldige records blijven, ontbrekende secties worden gemeld in `data_warnings` en in de log. Een 401 of verlopen `SecurityToken` breekt de fetch nog steeds af in plaats van lege data te tonen.
+Magister School Integration v2.3.1 splitst de schooltijden in een start- en eindtijd met eigen regels, geeft een duidelijke melding bij een ongeldige schoolnaam, en neemt twee bijdragen van @Niek mee: timeout-herstel en weerbaarheid tegen incomplete Magister-data.
 
 ### Opgelost
 
-- **Schooltijden negeerden geplande activiteiten (#43)** — `school_start_vandaag`, `school_einde_vandaag`, `volgende_schooldag` en de bijbehorende start/eind-sensoren filterden op soort `Les`. Een nulmeting, mentorgesprek of "Studie na school" staat in Magister als soort `Algemeen`, maar betekent wél dat je kind op school moet zijn. Die tellen nu mee. Hele-dag-items (studiedag, vrije dag), vervallen lessen en bloktypes (`Roostervrij`, `Blokkade`, `Standby`) blijven uitgesloten.
-- **Ongeldige schoolnaam gaf een misleidende fout (#45)** — vul je de weergavenaam in (bijv. `Onderwijsgemeenschap Venlo & Omstreken`) in plaats van de URL-naam, dan faalde de login met "kan geen verbinding maken". Het formulier meldt nu `invalid_school` met uitleg, en de schoolnaam wordt genormaliseerd: `Trevianum`, `trevianum.magister.net` en `https://trevianum.magister.net/` worden allemaal `trevianum`.
+- **Schooltijden: start en eind gesplitst (#43)** - `school_start_vandaag` en `school_einde_vandaag` gebruikten dezelfde lijst, waardoor optionele items de tijden vervuilden.
+  - **Start** is het vroegste moment waarop je kind aanwezig moet zijn. Naast lessen tellen geplande niet-lesitems mee (nulmeting, mentorgesprek), want die maken de start vroeger.
+  - **Eind** is het einde van de laatste **echte les**. "Studie na school" (`stc`, elke werkdag in een studielokaal) en avondblokken duwen de eindtijd niet meer op.
+  - Niet-lesitems tellen alleen binnen 05:00-18:00, niet als ze elke werkdag terugkeren, en niet bij bloktypes (`Roostervrij`, `Blokkade`, `Standby`).
+- **Nieuwe attributen `herhalend` en `herhalend_elke_werkdag`** - Magister's `Herhaling`/`HerhaalStatus` werden niet doorgegeven, waardoor in Home Assistant niet te zien was of een item een terugkerende achtergrondboeking is.
+- **Ongeldige schoolnaam gaf een misleidende fout (#45)** - een weergavenaam met spaties of `&` kan nooit een tenant-slug zijn. Het formulier meldt nu `invalid_school` met uitleg, en `Trevianum`, `trevianum.magister.net` en volledige URL's worden genormaliseerd naar `trevianum`.
+
+### Bijdragen van @Niek
+
+- **Timeout-herstel (#42)** - een mislukte fetch zette de integratie stil. Nu: 15 s HTTP-timeout, 90 s per fetch, een retry na 2 s bij een timeout. Bij aanhoudend falen verschijnt een **Settings -> Repairs**-melding per account die vanzelf verdwijnt zodra er weer data is. Verlopen tokens worden niet meer geaccepteerd.
+- **Weerbaar tegen incomplete data (#44)** - een studiewijzer zonder `Onderdelen` liet de hele refresh crashen met `KeyError`. Alle optionele collecties worden nu met gedeelde guards uitgelezen: geldige records blijven, ontbrekende secties komen in `data_warnings` en in de log. Een 401 of verlopen `SecurityToken` breekt de fetch nog steeds af.
 
 ### Met dank aan
 
 - @barrymossel (#43)
 - @cautje (#45)
+- @Niek (#42, #44)
 
 ## HACS update text
 
-Schooltijden nemen nu ook geplande activiteiten mee (nulmeting, mentorgesprek, studie na school), en een ongeldige schoolnaam geeft een duidelijke foutmelding in plaats van "kan geen verbinding maken".
+Schooltijden hebben nu een eigen regel voor start en eind (nulmeting telt mee voor de start, optionele studie duwt de eindtijd niet op), en een ongeldige schoolnaam geeft een duidelijke foutmelding.
 
 ## Previous release: v2.3.0
 

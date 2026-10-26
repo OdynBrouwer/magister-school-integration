@@ -710,8 +710,13 @@ def _extract_sensor_helpers():
     source = open(path, encoding="utf-8").read()
     tree = ast.parse(source)
 
-    wanted_funcs = {"_get_school_lessen", "_is_school_time", "_parse_school_datetime"}
-    wanted_consts = {"_NON_SCHOOL_SOORTEN", "_SCHOOL_DAY_START", "_SCHOOL_DAY_END"}
+    wanted_funcs = {
+        "_get_school_lessen",
+        "_get_school_start_items",
+        "_counts_for_start",
+        "_parse_school_datetime",
+    }
+    wanted_consts = {"_SCHOOL_DAY_START", "_SCHOOL_DAY_END", "_NON_SCHOOL_SOORTEN"}
     chunks = []
 
     for node in tree.body:
@@ -722,12 +727,12 @@ def _extract_sensor_helpers():
             if targets & wanted_consts:
                 chunks.append(ast.get_source_segment(source, node))
 
-    assert len(chunks) == 6, f"expected 3 functions + 3 constants, got {len(chunks)}"
+    assert len(chunks) == 7, f"expected 4 functions + 3 constants, got {len(chunks)}"
     import datetime as _dt
 
     namespace = {"frozenset": frozenset, "datetime": _dt.datetime, "time": _dt.time}
     exec("\n\n".join(chunks), namespace)
-    return namespace["_get_school_lessen"]
+    return namespace
 
 
 class TestSchoolSlugNormalization:
@@ -766,73 +771,132 @@ class TestSchoolSlugNormalization:
         assert api.school == "trevianum"
 
 
-class TestSchoolStartIncludesTimedAlgemeen:
-    """Issue #43: a nulmeting is soort 'Algemeen' but still school time."""
+class TestSchoolTimes:
+    """Issue #43: a nulmeting is soort 'Algemeen' but still moves the start.
+
+    The end of the school day stays at the last real lesson, so optional items
+    such as the recurring "Studie na school" ("stc") or an evening booking do
+    not push it later.
+    """
 
     @staticmethod
-    def get_lessen(kind_data):
-        return _extract_sensor_helpers()(kind_data)
+    def helpers():
+        return _extract_sensor_helpers()
 
-    def test_includes_timed_algemeen_item(self):
-        kind_data = {
-            "afspraken": [
-                {"soort": "Algemeen", "start": "2026-10-12 06:30:00", "duurt_hele_dag": False, "is_uitval": False},
-                {"soort": "Les", "start": "2026-10-12 07:25:00", "duurt_hele_dag": False, "is_uitval": False},
-            ]
-        }
-        lessen = self.get_lessen(kind_data)
-        assert len(lessen) == 2
-        assert min(a["start"] for a in lessen) == "2026-10-12 06:30:00"
+    def end_of_day(self, afspraken):
+        lessen = self.helpers()["_get_school_lessen"]({"afspraken": afspraken})
+        return max((a["einde"] for a in lessen), default=None)
+
+    def start_of_day(self, afspraken):
+        items = self.helpers()["_get_school_start_items"]({"afspraken": afspraken})
+        return min((a["start"] for a in items), default=None)
+
+    def test_start_includes_timed_algemeen_item(self):
+        afspraken = [
+            {"soort": "Algemeen", "start": "2026-10-12 06:30:00", "einde": "2026-10-12 06:45:00", "duurt_hele_dag": False, "is_uitval": False},
+            {"soort": "Les", "start": "2026-10-12 07:25:00", "einde": "2026-10-12 08:15:00", "duurt_hele_dag": False, "is_uitval": False},
+        ]
+        assert self.start_of_day(afspraken) == "2026-10-12 06:30:00"
+
+    def test_end_uses_lessons_only(self):
+        """The recurring optional 'Studie na school' must not extend the day."""
+        afspraken = [
+            {"soort": "Les", "start": "2026-10-28 08:35:00", "einde": "2026-10-28 10:55:00", "duurt_hele_dag": False, "is_uitval": False},
+            {"soort": "Algemeen", "start": "2026-10-28 15:25:00", "einde": "2026-10-28 16:15:00", "duurt_hele_dag": False, "is_uitval": False},
+        ]
+        assert self.end_of_day(afspraken) == "2026-10-28 10:55:00"
+
+    def test_recurring_every_workday_item_does_not_move_the_start(self):
+        """'Studie na school' repeats every working day and is a free choice."""
+        afspraken = [
+            {"soort": "Algemeen", "start": "2026-10-28 07:00:00", "einde": "2026-10-28 07:30:00", "duurt_hele_dag": False, "is_uitval": False, "herhalend_elke_werkdag": True},
+            {"soort": "Les", "start": "2026-10-28 08:35:00", "einde": "2026-10-28 09:25:00", "duurt_hele_dag": False, "is_uitval": False},
+        ]
+        assert self.start_of_day(afspraken) == "2026-10-28 08:35:00"
+
+    def test_start_excludes_evening_blocks(self):
+        afspraken = [
+            {"soort": "Les", "start": "2026-10-28 08:35:00", "einde": "2026-10-28 09:25:00", "duurt_hele_dag": False, "is_uitval": False},
+            {"soort": "Algemeen", "start": "2026-10-28 18:30:00", "einde": "2026-10-28 19:10:00", "duurt_hele_dag": False, "is_uitval": False},
+        ]
+        assert self.start_of_day(afspraken) == "2026-10-28 08:35:00"
+
+    def test_start_excludes_early_morning_block(self):
+        afspraken = [
+            {"soort": "Algemeen", "start": "2026-10-28 04:00:00", "einde": "2026-10-28 05:00:00", "duurt_hele_dag": False, "is_uitval": False},
+            {"soort": "Les", "start": "2026-10-28 08:35:00", "einde": "2026-10-28 09:25:00", "duurt_hele_dag": False, "is_uitval": False},
+        ]
+        assert self.start_of_day(afspraken) == "2026-10-28 08:35:00"
 
     def test_excludes_all_day_notice(self):
-        kind_data = {
-            "afspraken": [
-                {"soort": "Algemeen", "start": "2026-10-12 00:00:00", "duurt_hele_dag": True, "is_uitval": False},
-                {"soort": "Les", "start": "2026-10-12 07:25:00", "duurt_hele_dag": False, "is_uitval": False},
-            ]
-        }
-        lessen = self.get_lessen(kind_data)
-        assert len(lessen) == 1
-        assert lessen[0]["start"] == "2026-10-12 07:25:00"
+        afspraken = [
+            {"soort": "Algemeen", "start": "2026-10-12 00:00:00", "einde": "2026-10-12 23:59:00", "duurt_hele_dag": True, "is_uitval": False},
+            {"soort": "Les", "start": "2026-10-12 07:25:00", "einde": "2026-10-12 08:15:00", "duurt_hele_dag": False, "is_uitval": False},
+        ]
+        assert self.start_of_day(afspraken) == "2026-10-12 07:25:00"
+        assert self.end_of_day(afspraken) == "2026-10-12 08:15:00"
 
     def test_excludes_cancelled(self):
-        kind_data = {
-            "afspraken": [
-                {"soort": "Les", "start": "2026-10-12 07:25:00", "duurt_hele_dag": False, "is_uitval": True},
-            ]
-        }
-        assert self.get_lessen(kind_data) == []
+        afspraken = [
+            {"soort": "Les", "start": "2026-10-12 07:25:00", "einde": "2026-10-12 08:15:00", "duurt_hele_dag": False, "is_uitval": True},
+        ]
+        assert self.start_of_day(afspraken) is None
+        assert self.end_of_day(afspraken) is None
 
 
-    def test_excludes_evening_algemeen_blocks(self):
-        """An 18:30-20:40 'Algemeen' block is an evening event, not school time."""
-        kind_data = {
-            "afspraken": [
-                {"soort": "Les", "start": "2026-10-28 08:35:00", "einde": "2026-10-28 10:55:00", "duurt_hele_dag": False, "is_uitval": False},
-                {"soort": "Algemeen", "start": "2026-10-28 15:25:00", "einde": "2026-10-28 16:15:00", "duurt_hele_dag": False, "is_uitval": False},
-                {"soort": "Algemeen", "start": "2026-10-28 18:30:00", "einde": "2026-10-28 19:10:00", "duurt_hele_dag": False, "is_uitval": False},
-                {"soort": "Algemeen", "start": "2026-10-28 20:00:00", "einde": "2026-10-28 20:40:00", "duurt_hele_dag": False, "is_uitval": False},
-            ]
-        }
-        lessen = self.get_lessen(kind_data)
-        assert max(a["einde"] for a in lessen) == "2026-10-28 16:15:00"
+class TestHerhaling:
+    """Recurring background bookings ("Studie na school") are identifiable."""
 
-    def test_excludes_early_morning_algemeen(self):
-        """A 04:00 block is not a school start either."""
-        kind_data = {
-            "afspraken": [
-                {"soort": "Algemeen", "start": "2026-10-28 04:00:00", "einde": "2026-10-28 05:00:00", "duurt_hele_dag": False, "is_uitval": False},
-                {"soort": "Les", "start": "2026-10-28 08:35:00", "einde": "2026-10-28 09:25:00", "duurt_hele_dag": False, "is_uitval": False},
-            ]
-        }
-        lessen = self.get_lessen(kind_data)
-        assert min(a["start"] for a in lessen) == "2026-10-28 08:35:00"
+    def _helpers(self):
+        """Exec the real helpers from the script without running the CLI."""
+        import ast
 
-    def test_excludes_block_types(self):
-        kind_data = {
-            "afspraken": [
-                {"soort": "Roostervrij", "start": "2026-10-12 07:25:00", "duurt_hele_dag": False, "is_uitval": False},
-                {"soort": "Blokkade", "start": "2026-10-12 08:25:00", "duurt_hele_dag": False, "is_uitval": False},
-            ]
+        script_path = os.path.join(
+            os.path.dirname(__file__),
+            "custom_components", "magister_school", "script", "magister.py",
+        )
+        source = open(script_path, encoding="utf-8").read()
+        tree = ast.parse(source)
+
+        wanted = {"object_data", "_herhaling", "_is_herhalend", "_is_elke_werkdag"}
+        chunks = [
+            ast.get_source_segment(source, node)
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef) and node.name in wanted
+        ]
+        assert len(chunks) == 4, f"expected 4 helpers, got {len(chunks)}"
+
+        namespace = {}
+        exec("\n\n".join(chunks), namespace)
+        return namespace
+
+    def test_studie_na_school_is_recurring_every_workday(self):
+        """Shape copied from the real Magister response."""
+        item = {
+            "Omschrijving": "Studie na school",
+            "Lokatie": "stc",
+            "HerhaalStatus": 2,
+            "Herhaling": {
+                "BeginDatum": "2026-08-24",
+                "EindDatum": "2027-07-31",
+                "Dagelijks": {"IsElkeWerkdag": True},
+            },
         }
-        assert self.get_lessen(kind_data) == []
+        h = self._helpers()
+        assert h["_is_elke_werkdag"](item) is True
+        assert h["_is_herhalend"](item) is True
+
+    def test_one_off_appointment_is_not_recurring(self):
+        item = {"Omschrijving": "Mentorgesprekje", "HerhaalStatus": 0, "Herhaling": None}
+        h = self._helpers()
+        assert h["_is_elke_werkdag"](item) is False
+        assert h["_is_herhalend"](item) is False
+
+    def test_mapping_exposes_the_recurrence_fields(self):
+        script_path = os.path.join(
+            os.path.dirname(__file__),
+            "custom_components", "magister_school", "script", "magister.py",
+        )
+        content = open(script_path, encoding="utf-8").read()
+        assert '"herhalend": _is_herhalend(item)' in content
+        assert '"herhalend_elke_werkdag": _is_elke_werkdag(item)' in content

@@ -641,6 +641,26 @@ def safe_datum_field(item, *keys):
             return datum(v)
     return "?"
 
+def _herhaling(item):
+    """Return the Herhaling object of an appointment, or an empty dict."""
+    return object_data(item.get("Herhaling"))
+
+
+def _is_herhalend(item):
+    """True when Magister marks the appointment as a recurring series."""
+    return bool(_herhaling(item)) or bool(item.get("HerhaalStatus"))
+
+
+def _is_elke_werkdag(item):
+    """True when the appointment repeats on every working day of the year.
+
+    Magister uses this for background bookings such as "Studie na school" in a
+    study room: they are free to attend, so they must not count as school time.
+    """
+    dagelijks = object_data(_herhaling(item).get("Dagelijks"))
+    return bool(dagelijks.get("IsElkeWerkdag"))
+
+
 def _map_rooster_item(item, appointment_history, kindid):
     """Map een afspraak-/roosterwijziging-item naar de sensor-dict."""
     return {
@@ -664,6 +684,11 @@ def _map_rooster_item(item, appointment_history, kindid):
         "was_afwijkend": _remember_was_afwijkend(appointment_history, kindid, item),
         "lesuurstart": item.get("LesuurVan"),
         "lesuureinde": item.get("LesuurTotMet"),
+        # Herhaling onderscheidt terugkerende achtergronditems (bijv. "Studie na
+        # school", elke werkdag in een lokaal) van echte afspraken. Zonder dit
+        # veld is dat verschil in Home Assistant niet te zien.
+        "herhalend": _is_herhalend(item),
+        "herhalend_elke_werkdag": _is_elke_werkdag(item),
     }
 
 def _appointment_key(kind_id, item):

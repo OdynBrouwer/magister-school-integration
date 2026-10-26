@@ -65,30 +65,50 @@ _NON_SCHOOL_SOORTEN = frozenset(
 )
 
 
-def _parse_school_datetime(value):
-    return datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
-
-
-# Non-lesson appointments only count as school time when they fall inside this
-# window. Magister also schedules evening events as soort "Algemeen" (an open
-# evening booked in blocks such as "10 leerlingen"), and those must not push
-# school_einde_vandaag to 20:40.
+# Timed non-lesson items only count as school time inside this window. Magister
+# also schedules evening events as soort "Algemeen" (an open evening booked in
+# blocks such as "10 leerlingen", 18:30-20:40).
 _SCHOOL_DAY_START = time(5, 0)
 _SCHOOL_DAY_END = time(18, 0)
 
 
-def _is_school_time(afspraak):
-    """Return True when an appointment means the child has to be at school."""
+def _parse_school_datetime(value):
+    return datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+
+
+def _get_school_lessen(kind_data):
+    """Return the scheduled lessons that decide when the school day ends.
+
+    Only ``soort`` "Les": a recurring optional item such as "Studie na school"
+    (every working day in a study room) or an evening booking must not push
+    ``school_einde_vandaag`` later than the last real lesson.
+    """
+    afspraken = kind_data.get("afspraken", []) if kind_data else []
+    return [
+        a
+        for a in afspraken
+        if a.get("soort") == "Les"
+        and not a.get("is_uitval")
+        and not a.get("duurt_hele_dag")
+    ]
+
+
+def _counts_for_start(afspraak):
+    """Return True when an appointment can move the school start earlier.
+
+    A nulmeting or mentor meeting is scheduled as soort "Algemeen" but still
+    means the child must be at school on time (issue #43). Recurring optional
+    items ("Studie na school", every working day) and evening blocks are not
+    part of the compulsory schedule, so they are ignored here.
+    """
     if afspraak.get("is_uitval") or afspraak.get("duurt_hele_dag"):
+        return False
+    if afspraak.get("herhalend_elke_werkdag"):
         return False
     if afspraak.get("soort") in _NON_SCHOOL_SOORTEN:
         return False
     if afspraak.get("soort") == "Les":
         return True
-
-    # Timed non-lesson items: a nulmeting, a mentor meeting or "Studie na school"
-    # all mean the child must be at school (issue #43), but only during the
-    # school day.
     try:
         start = _parse_school_datetime(afspraak["start"]).time()
     except (KeyError, TypeError, ValueError):
@@ -96,16 +116,10 @@ def _is_school_time(afspraak):
     return _SCHOOL_DAY_START <= start < _SCHOOL_DAY_END
 
 
-def _get_school_lessen(kind_data):
-    """Return appointments that count as school time for start/end sensors.
-
-    Lessons (``soort`` "Les") always count. Timed non-lesson items count only
-    inside the school-day window; filtering on ``soort == "Les"`` alone used to
-    drop a morning nulmeting, which made ``school_start_vandaag`` too late (see
-    issue #43: the alarm clock went off at the wrong time).
-    """
+def _get_school_start_items(kind_data):
+    """Return appointments that determine when the child must be at school."""
     afspraken = kind_data.get("afspraken", []) if kind_data else []
-    return [a for a in afspraken if _is_school_time(a)]
+    return [a for a in afspraken if _counts_for_start(a)]
 
 
 def _non_midnight_lessons(lessen, day):
@@ -170,15 +184,22 @@ class KindOverviewSensor(SensorEntity):
         _LOGGER = logging.getLogger(__name__)
 
         lessen = _get_school_lessen(kind_data)
+        start_items = _get_school_start_items(kind_data)
         vandaag = datetime.now().date()
+        dag_start = _non_midnight_lessons(start_items, vandaag)
         dag_lessen = _non_midnight_lessons(lessen, vandaag)
 
         # School start/einde vandaag
-        if dag_lessen:
-            school_start = min(_parse_school_datetime(l["start"]) for l in dag_lessen)
-            school_einde = max(_parse_school_datetime(l["einde"]) for l in dag_lessen)
-        else:
-            school_start = school_einde = None
+        school_start = (
+            min(_parse_school_datetime(l["start"]) for l in dag_start)
+            if dag_start
+            else None
+        )
+        school_einde = (
+            max(_parse_school_datetime(l["einde"]) for l in dag_lessen)
+            if dag_lessen
+            else None
+        )
 
         # Volgende schooldag
         toekomstige_data = sorted({
@@ -191,12 +212,18 @@ class KindOverviewSensor(SensorEntity):
 
         # Start/einde op volgende schooldag
         if volgende_dag:
+            volgende_start = _non_midnight_lessons(start_items, volgende_dag)
             volgende_lessen = _non_midnight_lessons(lessen, volgende_dag)
-            if volgende_lessen:
-                v_start = min(_parse_school_datetime(l["start"]) for l in volgende_lessen)
-                v_einde = max(_parse_school_datetime(l["einde"]) for l in volgende_lessen)
-            else:
-                v_start = v_einde = None
+            v_start = (
+                min(_parse_school_datetime(l["start"]) for l in volgende_start)
+                if volgende_start
+                else None
+            )
+            v_einde = (
+                max(_parse_school_datetime(l["einde"]) for l in volgende_lessen)
+                if volgende_lessen
+                else None
+            )
         else:
             v_start = v_einde = None
 
@@ -860,7 +887,7 @@ class KindSchoolStartVandaagSensor(SensorEntity):
     @property
     def state(self):
         kind_data = self._get_kind_data()
-        lessen = _get_school_lessen(kind_data)
+        lessen = _get_school_start_items(kind_data)
         vandaag = datetime.now().date()
         dag_lessen = _non_midnight_lessons(lessen, vandaag)
         if not dag_lessen:
@@ -1005,7 +1032,7 @@ class KindVolgendeSchooldagStartSensor(SensorEntity):
     @property
     def state(self):
         kind_data = self._get_kind_data()
-        lessen = _get_school_lessen(kind_data)
+        lessen = _get_school_start_items(kind_data)
         vandaag = datetime.now().date()
         toekomstige_data = {
             _parse_school_datetime(l["start"]).date()

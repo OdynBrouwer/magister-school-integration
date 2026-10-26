@@ -24,7 +24,8 @@
       "invalid_auth": "Ongeldige gebruikersnaam, wachtwoord of 2FA-sleutel.",
       "cannot_connect": "Kan geen verbinding maken met Magister",
       "unknown": "Onverwachte fout opgetreden",
-      "timeout": "Time-out bij verbinden met Magister"
+      "timeout": "Time-out bij verbinden met Magister",
+      "invalid_school": "Ongeldige schoolnaam. Gebruik het deel vóór .magister.net, bijvoorbeeld 'trevianum' (zonder spaties of &)."
     },
     "abort": {
       "already_configured": "Dit account is al geconfigureerd",

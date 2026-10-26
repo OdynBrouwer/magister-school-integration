@@ -2,6 +2,7 @@ import subprocess
 import json
 import logging
 import os
+import re
 from pathlib import Path
 from .const import AUTH_FAILED_MARKER, EXIT_AUTH_FAILED
 
@@ -10,12 +11,39 @@ _LOGGER = logging.getLogger(__name__)
 DEFAULT_AUTHCODE = "00000000000000000000000000000000"
 
 
+
+_SCHOOL_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+
+
+def normalize_school(value: str | None) -> str | None:
+    """Normalize user input to a Magister tenant slug.
+
+    Accepts ``Trevianum``, ``trevianum.magister.net`` and full URLs, and returns
+    ``trevianum``. Returns ``None`` when the value cannot be a tenant slug, for
+    example because it still contains spaces, ``&`` or another display-name
+    character that Magister does not accept in a subdomain.
+    """
+    if not value:
+        return None
+
+    school = str(value).strip().lower()
+    school = school.split("://", 1)[-1]
+    school = school.split("/", 1)[0].split("?", 1)[0]
+    if school.endswith(".magister.net"):
+        school = school[: -len(".magister.net")]
+    school = school.strip()
+
+    if not _SCHOOL_RE.match(school):
+        return None
+    return school
+
+
 class AuthenticationRequired(Exception):
     """Raised when Magister requires re-authentication (invalid password / 2FA)."""
 
 class MagisterAPI:
     def __init__(self, school, user, password, totp_secret: str = None, days_back: int = 0, days_forward: int = 14, history_file: str = None):
-        self.school = school
+        self.school = normalize_school(school) or school
         self.user = user
         self.password = password
         self.totp_secret = totp_secret

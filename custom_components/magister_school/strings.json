@@ -31,7 +31,8 @@
     "error": {
       "invalid_auth": "Ongeldige gebruikersnaam, wachtwoord of 2FA-sleutel.",
       "cannot_connect": "Kan geen verbinding maken met Magister.",
-      "unknown": "Onbekende fout, controleer de logbestanden."
+      "unknown": "Onbekende fout, controleer de logbestanden.",
+      "invalid_school": "Ongeldige schoolnaam. Gebruik het deel vóór .magister.net, bijvoorbeeld 'trevianum' (zonder spaties of &)."
     },
     "abort": {
       "already_configured": "Deze Magister gebruiker is al geconfigureerd.",

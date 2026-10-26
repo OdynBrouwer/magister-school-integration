@@ -24,7 +24,8 @@
       "invalid_auth": "Invalid authentication",
       "cannot_connect": "Cannot connect to Magister",
       "unknown": "Unexpected error occurred",
-      "timeout": "Timeout connecting to Magister"
+      "timeout": "Timeout connecting to Magister",
+      "invalid_school": "Invalid school name. Use the part before .magister.net, for example 'trevianum' (no spaces or &)."
     },
     "abort": {
       "already_configured": "This account is already configured",

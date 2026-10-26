@@ -9,17 +9,22 @@ from .const import (
     MAX_POLL_INTERVAL,
     MIN_POLL_INTERVAL,
 )
-from .api import MagisterAPI, AuthenticationRequired
+from .api import AuthenticationRequired, MagisterAPI, normalize_school
 
 _LOGGER = logging.getLogger(__name__)
 
 async def validate_input(hass, data):
     """Valideer de gebruikersinvoer."""
-    school = data["school"]
-    user = data["user"]
-    password = data["pass"]
+    school = normalize_school(data.get("school"))
+    user = (data.get("user") or "").strip()
+    password = data.get("pass") or ""
 
-    if not school or not user or not password:
+    # A display name such as "School X & Omstreken" can never be a tenant slug;
+    # report that separately so the form can explain what to fill in.
+    if not school:
+        raise ValueError("invalid_school")
+
+    if not user or not password:
         raise ValueError("invalid_auth")
 
     totp_secret = data.get("totp_secret") or None
@@ -35,7 +40,7 @@ async def validate_input(hass, data):
 
     return {
         "title": f"Magister - {school}",
-        "user": user,
+        "school": school,
     }
 
 class MagisterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -50,17 +55,23 @@ class MagisterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             try:
                 info = await validate_input(self.hass, user_input)
 
-                await self.async_set_unique_id(f"{user_input['school']}_{user_input['user']}")
+                entry_data = {**user_input, "school": info["school"]}
+
+                await self.async_set_unique_id(
+                    f"{entry_data['school']}_{entry_data['user']}"
+                )
                 self._abort_if_unique_id_configured()
 
                 return self.async_create_entry(
                     title=info["title"],
-                    data=user_input,
+                    data=entry_data,
                 )
 
             except ValueError as err:
                 if str(err) == "invalid_auth":
                     errors["base"] = "invalid_auth"
+                elif str(err) == "invalid_school":
+                    errors["base"] = "invalid_school"
                 else:
                     errors["base"] = "unknown"
             except Exception as err:

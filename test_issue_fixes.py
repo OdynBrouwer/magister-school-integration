@@ -498,3 +498,146 @@ class TestHacsReviewFixes:
         assert "async_create_item" in init
         manifest = json.loads(self._read("manifest.json"))
         assert "lovelace" in manifest["dependencies"]
+
+
+def _load_api_module():
+    """Import api.py without Home Assistant by stubbing its relative import."""
+    import importlib.util
+    import sys
+    import types
+
+    pkg_name = "_magister_api_probe"
+    pkg = types.ModuleType(pkg_name)
+    pkg.__path__ = []
+    sys.modules[pkg_name] = pkg
+
+    component = os.path.join(
+        os.path.dirname(__file__), "custom_components", "magister_school"
+    )
+
+    # Load the real const.py so the stub cannot drift from the source.
+    const_spec = importlib.util.spec_from_file_location(
+        f"{pkg_name}.const", os.path.join(component, "const.py")
+    )
+    const = importlib.util.module_from_spec(const_spec)
+    sys.modules[f"{pkg_name}.const"] = const
+    const_spec.loader.exec_module(const)
+
+    path = os.path.join(component, "api.py")
+    spec = importlib.util.spec_from_file_location(f"{pkg_name}.api", path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[f"{pkg_name}.api"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _extract_sensor_helpers():
+    """Exec the real helpers from sensor.py without importing Home Assistant."""
+    import ast
+
+    path = os.path.join(
+        os.path.dirname(__file__),
+        "custom_components", "magister_school", "sensor.py",
+    )
+    source = open(path, encoding="utf-8").read()
+    tree = ast.parse(source)
+
+    wanted_funcs = {"_get_school_lessen"}
+    wanted_consts = {"_NON_SCHOOL_SOORTEN"}
+    chunks = []
+
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef) and node.name in wanted_funcs:
+            chunks.append(ast.get_source_segment(source, node))
+        elif isinstance(node, ast.Assign):
+            targets = {t.id for t in node.targets if isinstance(t, ast.Name)}
+            if targets & wanted_consts:
+                chunks.append(ast.get_source_segment(source, node))
+
+    assert len(chunks) == 2, f"expected function + constant, got {len(chunks)}"
+    namespace = {"frozenset": frozenset}
+    exec("\n\n".join(chunks), namespace)
+    return namespace["_get_school_lessen"]
+
+
+class TestSchoolSlugNormalization:
+    """Issue #45: a display name with spaces/& can never be a tenant slug."""
+
+    @staticmethod
+    def _norm(value):
+        return _load_api_module().normalize_school(value)
+
+    def test_accepts_plain_slug(self):
+        assert self._norm("trevianum") == "trevianum"
+
+    def test_lowercases_and_strips(self):
+        assert self._norm("  Trevianum  ") == "trevianum"
+
+    def test_accepts_hostname(self):
+        assert self._norm("trevianum.magister.net") == "trevianum"
+
+    def test_accepts_full_url(self):
+        assert self._norm("https://trevianum.magister.net/oidc") == "trevianum"
+
+    def test_rejects_display_name_with_ampersand(self):
+        assert (
+            self._norm("Onderwijsgemeenschap Venlo & Omstreken.magister.net") is None
+        )
+
+    def test_rejects_spaces(self):
+        assert self._norm("mijn school") is None
+
+    def test_rejects_empty(self):
+        assert self._norm("") is None
+        assert self._norm(None) is None
+
+    def test_api_normalizes_stored_school(self):
+        api = _load_api_module().MagisterAPI("Trevianum.magister.net", "u", "p")
+        assert api.school == "trevianum"
+
+
+class TestSchoolStartIncludesTimedAlgemeen:
+    """Issue #43: a nulmeting is soort 'Algemeen' but still school time."""
+
+    @staticmethod
+    def get_lessen(kind_data):
+        return _extract_sensor_helpers()(kind_data)
+
+    def test_includes_timed_algemeen_item(self):
+        kind_data = {
+            "afspraken": [
+                {"soort": "Algemeen", "start": "2026-10-12 06:30:00", "duurt_hele_dag": False, "is_uitval": False},
+                {"soort": "Les", "start": "2026-10-12 07:25:00", "duurt_hele_dag": False, "is_uitval": False},
+            ]
+        }
+        lessen = self.get_lessen(kind_data)
+        assert len(lessen) == 2
+        assert min(a["start"] for a in lessen) == "2026-10-12 06:30:00"
+
+    def test_excludes_all_day_notice(self):
+        kind_data = {
+            "afspraken": [
+                {"soort": "Algemeen", "start": "2026-10-12 00:00:00", "duurt_hele_dag": True, "is_uitval": False},
+                {"soort": "Les", "start": "2026-10-12 07:25:00", "duurt_hele_dag": False, "is_uitval": False},
+            ]
+        }
+        lessen = self.get_lessen(kind_data)
+        assert len(lessen) == 1
+        assert lessen[0]["start"] == "2026-10-12 07:25:00"
+
+    def test_excludes_cancelled(self):
+        kind_data = {
+            "afspraken": [
+                {"soort": "Les", "start": "2026-10-12 07:25:00", "duurt_hele_dag": False, "is_uitval": True},
+            ]
+        }
+        assert self.get_lessen(kind_data) == []
+
+    def test_excludes_block_types(self):
+        kind_data = {
+            "afspraken": [
+                {"soort": "Roostervrij", "start": "2026-10-12 07:25:00", "duurt_hele_dag": False, "is_uitval": False},
+                {"soort": "Blokkade", "start": "2026-10-12 08:25:00", "duurt_hele_dag": False, "is_uitval": False},
+            ]
+        }
+        assert self.get_lessen(kind_data) == []

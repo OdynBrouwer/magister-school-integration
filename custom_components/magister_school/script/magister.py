@@ -669,7 +669,15 @@ def _map_rooster_item(item, appointment_history, kindid):
         "status": infotstr(item.get("Status", 0), AFSPRAAK_STATUS),
         "soort": infotstr(item.get("Type", 0), AFSPRAAK_TYPE),
         "type": infotstr(item.get("InfoType", 0), AFSPRAAK_INFO_TYPE),
-        "lokaal": item.get("Lokatie", ""),
+        "lokaal": ", ".join(
+            dict.fromkeys(  # Lokatie repeats the first Lokalen entry
+                filter(
+                    None,
+                    [item.get("Lokatie")]
+                    + [l.get("Naam") for l in object_list(item.get("Lokalen"))],
+                )
+            )
+        ),
         "omschrijving": item.get("Omschrijving", ""),
         "opmerking": item.get("Opmerking") or "",
         "inhoud": dehtml(item.get("Inhoud", "")),
@@ -680,6 +688,7 @@ def _map_rooster_item(item, appointment_history, kindid):
         "docent": ", ".join(filter(None, ([object_data(item.get("Docent")).get("Naam")] if item.get("Docent") else []) + [d.get("Naam") for d in object_list(item.get("Docenten"))])),
         "docentcode": ", ".join(filter(None, ([object_data(item.get("Docent")).get("Docentcode")] if item.get("Docent") else []) + [d.get("Docentcode") for d in object_list(item.get("Docenten"))])),
         "is_huiswerk": item.get("InfoType", 0) == 1,
+        "is_afgerond": bool(item.get("Afgerond", False)),
         "is_uitval": "Vervallen" in (infotstr(item.get("Status", 0), AFSPRAAK_STATUS)),
         "was_afwijkend": _remember_was_afwijkend(appointment_history, kindid, item),
         "lesuurstart": item.get("LesuurVan"),
@@ -953,29 +962,7 @@ def main():
             sys.exit(0)
 
         kind_data["afspraken"] = [
-            {
-                "start": datum(item.get("Start") or item.get("Datum")),
-                "einde": datum(item.get("Einde") or item.get("Eind")),
-                "status": infotstr(item.get("Status", 0), AFSPRAAK_STATUS),
-                "soort": infotstr(item.get("Type", 0), AFSPRAAK_TYPE),
-                "type": infotstr(item.get("InfoType", 0), AFSPRAAK_INFO_TYPE),
-                "lokaal": ", ".join(filter(None, [item.get("Lokatie")] + [l.get("Naam") for l in object_list(item.get("Lokalen"))])),
-                "omschrijving": item.get("Omschrijving", ""),
-                "opmerking": item.get("Opmerking") or "",
-                "inhoud": dehtml(item.get("Inhoud", "")),
-                "is_online": bool(item.get("IsOnlineDeelname", False)),
-                "duurt_hele_dag": bool(item.get("DuurtHeleDag", False)),
-                "vak": ", ".join(filter(None, ([object_data(item.get("Vak")).get("Naam")] if item.get("Vak") else []) + [v.get("Naam") for v in object_list(item.get("Vakken"))])),
-                "vak_id": ", ".join(filter(None, ([str(object_data(item.get("Vak")).get("Id"))] if item.get("Vak") else []) + [str(v.get("Id")) for v in object_list(item.get("Vakken"))])),
-                "docent": ", ".join(filter(None, ([object_data(item.get("Docent")).get("Naam")] if item.get("Docent") else []) + [d.get("Naam") for d in object_list(item.get("Docenten"))])),
-                "docentcode": ", ".join(filter(None, ([object_data(item.get("Docent")).get("Docentcode")] if item.get("Docent") else []) + [d.get("Docentcode") for d in object_list(item.get("Docenten"))])),
-                "is_huiswerk": item.get("InfoType", 0) == 1,
-                "is_afgerond": bool(item.get("Afgerond", False)),
-                "is_uitval": "Vervallen" in (infotstr(item.get("Status", 0), AFSPRAAK_STATUS)),
-                "was_afwijkend": _remember_was_afwijkend(appointment_history, kindid, item),
-                "lesuurstart": item.get("LesuurVan"),
-                "lesuureinde": item.get("LesuurTotMet"),
-            }
+            _map_rooster_item(item, appointment_history, kindid)
             for item in afspraken
         ]
 

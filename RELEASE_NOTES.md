@@ -13,6 +13,9 @@ Magister School Integration v2.3.1 splitst de schooltijden in een start- en eind
 - **Nieuwe attributen `herhalend` en `herhalend_elke_werkdag`** - Magister's `Herhaling`/`HerhaalStatus` werden niet doorgegeven, waardoor in Home Assistant niet te zien was of een item een terugkerende achtergrondboeking is.
 - **Ongeldige schoolnaam gaf een misleidende fout (#45)** - een weergavenaam met spaties of `&` kan nooit een tenant-slug zijn. Het formulier meldt nu `invalid_school` met uitleg, en `Trevianum`, `trevianum.magister.net` en volledige URL's worden genormaliseerd naar `trevianum`.
 
+- **Herhaling-velden ontbraken op de afspraken-sensor** - de velden `herhalend` en `herhalend_elke_werkdag` waren alleen aan de gedeelde mapper toegevoegd, terwijl `afspraken` nog een eigen inline dict gebruikte. Beide lijsten gaan nu door `_map_rooster_item`, zodat velden niet meer kunnen uiteenlopen.
+- **Dubbele lokaalnaam** - `lokaal` gaf "440, 440" omdat `Lokatie` de eerste `Lokalen`-vermelding herhaalt.
+
 ### Bijdragen van @Niek
 
 - **Timeout-herstel (#42)** - een mislukte fetch zette de integratie stil. Nu: 15 s HTTP-timeout, 90 s per fetch, een retry na 2 s bij een timeout. Bij aanhoudend falen verschijnt een **Settings -> Repairs**-melding per account die vanzelf verdwijnt zodra er weer data is. Verlopen tokens worden niet meer geaccepteerd.

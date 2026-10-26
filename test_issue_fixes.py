@@ -892,6 +892,23 @@ class TestHerhaling:
         assert h["_is_elke_werkdag"](item) is False
         assert h["_is_herhalend"](item) is False
 
+    def test_afspraken_use_the_shared_mapper(self):
+        """Both lists must go through _map_rooster_item, or fields drift.
+
+        The recurrence fields were first added only to the shared mapper while
+        ``afspraken`` still used an inline dict, so the sensor never showed them.
+        """
+        script_path = os.path.join(
+            os.path.dirname(__file__),
+            "custom_components", "magister_school", "script", "magister.py",
+        )
+        content = open(script_path, encoding="utf-8").read()
+        assert (
+            'kind_data["afspraken"] = [\n'
+            "            _map_rooster_item(item, appointment_history, kindid)"
+        ) in content
+        assert '"is_afgerond": bool(item.get("Afgerond", False))' in content
+
     def test_mapping_exposes_the_recurrence_fields(self):
         script_path = os.path.join(
             os.path.dirname(__file__),

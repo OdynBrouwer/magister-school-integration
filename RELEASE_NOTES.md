@@ -4,6 +4,11 @@
 
 Magister School Integration v2.3.1 laat de schooltijdsensoren ook geplande activiteiten meenemen en geeft een duidelijke melding wanneer de schoolnaam geen geldige URL-naam is.
 
+### Ook in deze release (bijdragen van @Niek)
+
+- **Timeout-herstel (#42)**: één mislukte fetch zette de integratie stil. Nu is er een HTTP-timeout van 15 s, een limiet van 90 s per fetch en één retry na 2 seconden bij een timeout. Verschillende endpoints worden niet opnieuw geprobeerd. Bij falen verschijnt een **Settings → Repairs**-melding per account, die vanzelf verdwijnt zodra er weer data is. Verlopen tokens worden niet meer geaccepteerd.
+- **Weerbaar tegen incomplete Magister-data (#44)**: een studiewijzer zonder `Onderdelen` liet de hele refresh crashen met `KeyError`. Alle optionele collecties (rooster, wijzigingen, cijfers, voortgangscijfers, absenties, opdrachten, activiteiten, aanmeldingen, studiewijzers) worden nu met gedeelde guards uitgelezen: geldige records blijven, ontbrekende secties worden gemeld in `data_warnings` en in de log. Een 401 of verlopen `SecurityToken` breekt de fetch nog steeds af in plaats van lege data te tonen.
+
 ### Opgelost
 
 - **Schooltijden negeerden geplande activiteiten (#43)** — `school_start_vandaag`, `school_einde_vandaag`, `volgende_schooldag` en de bijbehorende start/eind-sensoren filterden op soort `Les`. Een nulmeting, mentorgesprek of "Studie na school" staat in Magister als soort `Algemeen`, maar betekent wél dat je kind op school moet zijn. Die tellen nu mee. Hele-dag-items (studiedag, vrije dag), vervallen lessen en bloktypes (`Roostervrij`, `Blokkade`, `Standby`) blijven uitgesloten.

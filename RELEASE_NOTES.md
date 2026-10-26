@@ -2,23 +2,69 @@
 
 ## GitHub release text
 
-Magister School Integration v2.3.1 splitst de schooltijden in een start- en eindtijd met eigen regels, geeft een duidelijke melding bij een ongeldige schoolnaam, en neemt twee bijdragen van @Niek mee: timeout-herstel en weerbaarheid tegen incomplete Magister-data.
+Magister School Integration v2.3.1 maakt het onderscheid tussen echte lessen, echte afspraken en lokaal-/groepsreserveringen, splitst de schooltijden in een start- en eindtijd met eigen regels, en neemt twee bijdragen van @Niek mee: timeout-herstel en weerbaarheid tegen incomplete Magister-data.
+
+### Nieuw: `categorie` op elke afspraak
+
+Magister gebruikt `soort: Algemeen` voor drie verschillende dingen. De integratie classificeert ze nu:
+
+| `categorie` | Wat het is | Voorbeeld | Vak/docent |
+|---|---|---|---|
+| `les` | een echt lesuur | `wisb - wld - g5.wisb1` | ja |
+| `afspraak` | een echte afspraak | nulmeting, mentorgesprek | minstens één |
+| `boeking` | lokaal-/groepsreservering | `Studie na school`, `10 leerlingen` | nee |
+
+Die laatste groep is geen afspraak voor je kind maar een gereserveerd lokaal, bijvoorbeeld voor een studie-uur of een avondactiviteit. Filter erop in templates, of gebruik de nieuwe kaartoptie.
+
+### Nieuw: kaartoptie `hide_boekingen`
+
+Verbergt de `boeking`-items in de roosterwidgets. Standaard **uit**: zonder de optie blijven ze zichtbaar met een 📌 **Boeking**-badge en gedempte stijl, zodat je het verschil ziet zonder iets kwijt te raken.
+
+```yaml
+type: custom:magister-school-card
+entity: sensor.magister_voornaam_achternaam
+layout: auto
+hide_layout_selector: true
+hide_kind_info: false
+hide_boekingen: false        # true = Studie na school en avondblokken verbergen
+show_widgets:
+  - stats
+  - week_schooltijden
+  - rooster_meta
+  - rooster_morgen
+  - volgende_les
+  - huiswerk
+  - cijfers
+  - voortgangscijfers
+  - opdrachten
+  - wijzigingen
+  - schooltijden
+  - volgende_schooldag
+```
+
+### Hoe de schooltijden nu werken
+
+Start en eind volgen bewust **niet** dezelfde regel:
+
+| | Wat telt mee | Waarom |
+|---|---|---|
+| **`school_start_vandaag`** | lessen **en** afspraken met een vak of docent | een nulmeting om 08:00 betekent dat je kind er om 08:00 moet zijn, ook als de eerste les om 08:35 begint |
+| **`school_einde_vandaag`** | alleen echte lessen | een optioneel studie-uur of avondactiviteit betekent niet dat je kind tot 20:40 op school zit |
+
+Een niet-lesitem telt alleen mee als het een **vak of docent** heeft, binnen **05:00-18:00** valt, **niet** elke werkdag terugkeert en geen bloktype is. Vervallen items en hele-dag-items tellen nooit mee.
+
+Praktisch: gebruik `school_start_vandaag` voor je wekker en `school_einde_vandaag` voor "wanneer kan ik mijn kind ophalen?".
+
+### Nieuw: kaartbron in deze repository
+
+De kaart wordt nu gebouwd uit `card/` naar `custom_components/magister_school/www/`. Bron en bundel kunnen daardoor niet meer uiteenlopen. Bouwen: `cd card && npm install && npm run build`.
 
 ### Opgelost
 
-- **Schooltijden: start en eind gesplitst (#43)** - `school_start_vandaag` en `school_einde_vandaag` gebruikten dezelfde lijst, waardoor optionele items de tijden vervuilden.
-  - **Start** is het vroegste moment waarop je kind aanwezig moet zijn. Naast lessen tellen geplande niet-lesitems mee (nulmeting, mentorgesprek), want die maken de start vroeger.
-  - **Eind** is het einde van de laatste **echte les**. "Studie na school" (`stc`, elke werkdag in een studielokaal) en avondblokken duwen de eindtijd niet meer op.
-  - Een niet-lesitem telt alleen als het een **vak of docent** heeft, binnen 05:00-18:00 valt, niet elke werkdag terugkeert en geen bloktype is. Magister gebruikt `Algemeen` namelijk ook voor lokaal- en groepsboekingen: "Studie na school" en avondblokken als "10 leerlingen" hebben geen vak en geen docent, terwijl alle lessen en een nulmeting die wel hebben.
-- **Nieuwe attributen `herhalend` en `herhalend_elke_werkdag`** - Magister's `Herhaling`/`HerhaalStatus` werden niet doorgegeven, waardoor in Home Assistant niet te zien was of een item een terugkerende achtergrondboeking is.
+- **Schooltijden negeerden geplande activiteiten (#43)** - de sensoren filterden op soort `Les`, waardoor een nulmeting (`Algemeen`) genegeerd werd en de wekker te laat stond.
 - **Ongeldige schoolnaam gaf een misleidende fout (#45)** - een weergavenaam met spaties of `&` kan nooit een tenant-slug zijn. Het formulier meldt nu `invalid_school` met uitleg, en `Trevianum`, `trevianum.magister.net` en volledige URL's worden genormaliseerd naar `trevianum`.
-
-- **Herhaling-velden ontbraken op de afspraken-sensor** - de velden `herhalend` en `herhalend_elke_werkdag` waren alleen aan de gedeelde mapper toegevoegd, terwijl `afspraken` nog een eigen inline dict gebruikte. Beide lijsten gaan nu door `_map_rooster_item`, zodat velden niet meer kunnen uiteenlopen.
-- **Dubbele lokaalnaam** - `lokaal` gaf "440, 440" omdat `Lokatie` de eerste `Lokalen`-vermelding herhaalt.
-
-- **`categorie` op elke afspraak** - `les`, `afspraak` of `boeking`. Magister gebruikt `Algemeen` voor twee verschillende dingen: een echte afspraak (nulmeting, mentorgesprek, altijd met vak of docent) en een lokaal-/groepsboeking ("Studie na school", avondblokken als "10 leerlingen", zonder vak en docent). Dit maakt de ontdekking bruikbaar in templates en automations.
-- **Kaartoptie `hide_boekingen`** - verbergt die boekingen in de roosterwidgets; standaard uit. Zonder de optie blijven ze zichtbaar met een `Boeking`-badge.
-- **Kaartbron verhuisd naar `card/`** - de kaart wordt nu in deze repository gebouwd naar `custom_components/magister_school/www/`, zodat bron en bundel niet meer kunnen afwijken.
+- **`herhalend` en `herhalend_elke_werkdag` ontbraken** - Magister's `Herhaling`/`HerhaalStatus` werden niet doorgegeven. Beide afsprakenlijsten gaan nu door dezelfde mapper, zodat velden niet meer kunnen uiteenlopen.
+- **Dubbele lokaalnaam** - `lokaal` gaf "440, 440"; nu "440".
 
 ### Bijdragen van @Niek
 
@@ -33,7 +79,7 @@ Magister School Integration v2.3.1 splitst de schooltijden in een start- en eind
 
 ## HACS update text
 
-Schooltijden hebben nu een eigen regel voor start en eind (nulmeting telt mee voor de start, optionele studie duwt de eindtijd niet op), en een ongeldige schoolnaam geeft een duidelijke foutmelding.
+Afspraken krijgen een `categorie` (les / afspraak / boeking) met een kaartoptie `hide_boekingen`, en de schooltijden hebben nu een eigen regel voor start en eind: een nulmeting telt mee voor de start, een optioneel studie-uur duwt de eindtijd niet op.
 
 ## Previous release: v2.3.0
 

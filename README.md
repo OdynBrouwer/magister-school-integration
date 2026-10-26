@@ -22,6 +22,10 @@ Integreer Magister schoolinformatie direct in je Home Assistant dashboard. Toon 
 
 ## ✨ Nieuw in v2.3.1
 
+- **`categorie` op elke afspraak** — `les`, `afspraak` of `boeking`. Magister gebruikt `Algemeen` voor twee verschillende dingen: een echte afspraak (nulmeting, mentorgesprek — altijd met vak of docent) en een lokaal-/groepsboeking ("Studie na school", avondblokken als "10 leerlingen" — zonder vak en docent). Filter erop in templates of met `hide_boekingen` in de kaart.
+- **Kaartoptie `hide_boekingen`** — verbergt die boekingen in de roosterwidgets (standaard uit). Zonder de optie blijven ze zichtbaar met een 📌 Boeking-badge, zodat je het verschil ziet zonder iets kwijt te raken.
+- **Kaartbron in deze repository** — de kaart wordt nu gebouwd uit `card/` naar `custom_components/magister_school/www/`, zodat bron en bundel altijd samengaan.
+
 - **Schooltijden: start en eind verschillen nu** — `school_start_vandaag` en `school_einde_vandaag` gebruikten dezelfde lijst, waardoor optionele items de tijden vervuilde.
 
   - **Start** = het vroegste moment waarop je kind aanwezig moet zijn. Naast lessen tellen hier ook geplande niet-lesitems mee (nulmeting, mentorgesprek), want die maken de start vroeger (issue #43).
@@ -191,6 +195,7 @@ Elk kind krijgt een **overzicht-sensor** `sensor.magister_[kind_naam]`
 | `vak` | `Wiskunde B` | Vaknaam |
 | `vak_id` | `12111` | Vak-Id |
 | `herhalend` | `true`/`false` | Terugkerende reeks (bijv. Studie na school) |
+| `categorie` | `les` / `afspraak` / `boeking` | Les, echte afspraak of lokaal-/groepsboeking |
 | `herhalend_elke_werkdag` | `true`/`false` | Herhaalt elke werkdag - telt niet als schooltijd |
 | `docent` | `Willems` | Docentnaam |
 | `docentcode` | `WLD` | Docentcode |
@@ -323,6 +328,7 @@ installeren.
 ```yaml
 type: custom:magister-school-card
 entity: sensor.magister_naam_kind
+# hide_boekingen: true   # verberg Studie na school / avondblokken
 ```
 
 De kaart wordt geserveerd vanaf `/magister_school/magister-school-card.js` en

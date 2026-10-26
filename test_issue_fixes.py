@@ -934,3 +934,59 @@ class TestHerhaling:
         content = open(script_path, encoding="utf-8").read()
         assert '"herhalend": _is_herhalend(item)' in content
         assert '"herhalend_elke_werkdag": _is_elke_werkdag(item)' in content
+
+
+class TestCategorie:
+    """Magister mixes real appointments and room bookings under 'Algemeen'."""
+
+    def _categorize(self, item):
+        import ast
+
+        script_path = os.path.join(
+            os.path.dirname(__file__),
+            "custom_components", "magister_school", "script", "magister.py",
+        )
+        source = open(script_path, encoding="utf-8").read()
+        tree = ast.parse(source)
+        wanted = {"object_data", "object_list", "infotstr", "_appointment_category"}
+        consts = {"AFSPRAAK_TYPE"}
+        chunks = [
+            ast.get_source_segment(source, node)
+            for node in tree.body
+            if (isinstance(node, ast.FunctionDef) and node.name in wanted)
+            or (
+                isinstance(node, ast.Assign)
+                and any(isinstance(t, ast.Name) and t.id in consts for t in node.targets)
+            )
+        ]
+        namespace = {}
+        exec("\n\n".join(chunks), namespace)
+        return namespace["_appointment_category"](item)
+
+    def test_lesson_is_a_lesson(self):
+        item = {"Type": 13, "Vakken": [{"Id": 1, "Naam": "Wiskunde B"}], "Docenten": [{"Naam": "X"}]}
+        assert self._categorize(item) == "les"
+
+    def test_nulmeting_with_subject_is_an_appointment(self):
+        item = {"Type": 2, "Vakken": [{"Id": 1, "Naam": "Geschiedenis"}], "Docenten": []}
+        assert self._categorize(item) == "afspraak"
+
+    def test_mentor_meeting_with_teacher_is_an_appointment(self):
+        item = {"Type": 2, "Vakken": [], "Docenten": [{"Naam": "I.J.E. Koot"}]}
+        assert self._categorize(item) == "afspraak"
+
+    def test_studie_na_school_is_a_booking(self):
+        item = {"Type": 2, "Vakken": [], "Docenten": [], "Omschrijving": "Studie na school", "Lokatie": "stc"}
+        assert self._categorize(item) == "boeking"
+
+    def test_evening_block_is_a_booking(self):
+        item = {"Type": 2, "Vakken": [], "Docenten": [], "Omschrijving": "10 leerlingen"}
+        assert self._categorize(item) == "boeking"
+
+    def test_mapping_exposes_categorie(self):
+        script_path = os.path.join(
+            os.path.dirname(__file__),
+            "custom_components", "magister_school", "script", "magister.py",
+        )
+        content = open(script_path, encoding="utf-8").read()
+        assert '"categorie": _appointment_category(item)' in content

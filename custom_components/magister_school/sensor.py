@@ -53,16 +53,41 @@ async def async_setup_entry(
     
     async_add_entities(sensors, update_before_add=False)
 
-def _get_school_lessen(kind_data):
-    """Return actual school lessons (soort 'Les'), excluding cancelled items.
+# Soorten die nooit als schooltijd gelden, ook niet als ze een starttijd hebben.
+_NON_SCHOOL_SOORTEN = frozenset(
+    {
+        "Roostervrij",
+        "Blokkade",
+        "Blokkade Lokaal",
+        "Blokkade Klas",
+        "Standby",
+    }
+)
 
-    Filter on ``soort`` rather than ``is_huiswerk``: a lesson that has homework
-    attached (InfoType 1) is still a real lesson, and using ``is_huiswerk`` would
-    wrongly drop it. This also excludes non-lesson items like all-day notices and
-    "Inloopspreekuur" (soort "Algemeen") from school start/end times.
+
+def _get_school_lessen(kind_data):
+    """Return timed school appointments, excluding cancelled and all-day items.
+
+    We filter on a real start time instead of on ``soort``. Magister also
+    schedules timed items as ``soort`` "Algemeen" — a nulmeting, a mentor
+    meeting or "Studie na school" — and those still mean the child has to be at
+    school, so they belong in the school start/end sensors.
+
+    Filtering on ``soort == "Les"`` used to drop them, which made
+    ``school_start_vandaag`` too late (see issue #43: the alarm clock went off at
+    the wrong time).
+
+    Whole-day notices (a study day, a free day) carry ``duurt_hele_dag`` and no
+    start time; they are excluded so they never shift school start/end.
     """
     afspraken = kind_data.get("afspraken", []) if kind_data else []
-    return [a for a in afspraken if a.get("soort") == "Les" and not a.get("is_uitval")]
+    return [
+        a
+        for a in afspraken
+        if not a.get("is_uitval")
+        and not a.get("duurt_hele_dag")
+        and a.get("soort") not in _NON_SCHOOL_SOORTEN
+    ]
 
 
 def _parse_school_datetime(value):

@@ -1,3 +1,25 @@
+# Release v2.3.1
+
+## GitHub release text
+
+Magister School Integration v2.3.1 laat de schooltijdsensoren ook geplande activiteiten meenemen en geeft een duidelijke melding wanneer de schoolnaam geen geldige URL-naam is.
+
+### Opgelost
+
+- **Schooltijden negeerden geplande activiteiten (#43)** — `school_start_vandaag`, `school_einde_vandaag`, `volgende_schooldag` en de bijbehorende start/eind-sensoren filterden op soort `Les`. Een nulmeting, mentorgesprek of "Studie na school" staat in Magister als soort `Algemeen`, maar betekent wél dat je kind op school moet zijn. Die tellen nu mee. Hele-dag-items (studiedag, vrije dag), vervallen lessen en bloktypes (`Roostervrij`, `Blokkade`, `Standby`) blijven uitgesloten.
+- **Ongeldige schoolnaam gaf een misleidende fout (#45)** — vul je de weergavenaam in (bijv. `Onderwijsgemeenschap Venlo & Omstreken`) in plaats van de URL-naam, dan faalde de login met "kan geen verbinding maken". Het formulier meldt nu `invalid_school` met uitleg, en de schoolnaam wordt genormaliseerd: `Trevianum`, `trevianum.magister.net` en `https://trevianum.magister.net/` worden allemaal `trevianum`.
+
+### Met dank aan
+
+- @barrymossel (#43)
+- @cautje (#45)
+
+## HACS update text
+
+Schooltijden nemen nu ook geplande activiteiten mee (nulmeting, mentorgesprek, studie na school), en een ongeldige schoolnaam geeft een duidelijke foutmelding in plaats van "kan geen verbinding maken".
+
+## Previous release: v2.3.0
+
 # Release v2.3.0
 
 ## GitHub release text

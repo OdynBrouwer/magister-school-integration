@@ -20,6 +20,12 @@ Integreer Magister schoolinformatie direct in je Home Assistant dashboard. Toon 
 - **🚫 Uitval & Wijzigingen** - Vervallen lessen verschijnen ook in de roosterwijzigingen
 - **💾 Recorder-vriendelijk** - Omvangrijke attributen automatisch uitgesloten van de recorder-historie
 
+## ✨ Nieuw in v2.3.1
+
+- **Schooltijden inclusief geplande activiteiten** — `school_start_vandaag`, `school_einde_vandaag` en de "volgende schooldag"-sensoren keken alleen naar afspraken met soort `Les`. Een nulmeting, mentorgesprek of "Studie na school" staat in Magister als soort `Algemeen`, maar betekent wél dat je kind op school moet zijn. Die tellen nu mee. Hele-dag-items (studiedag, vrije dag) en vervallen lessen blijven uitgesloten.
+- **Duidelijke fout bij een ongeldige schoolnaam** — vul je de weergavenaam in (bijv. `Onderwijsgemeenschap Venlo & Omstreken`) in plaats van de URL-naam, dan meldt het formulier nu `invalid_school` met uitleg, in plaats van een nietszeggende "kan geen verbinding maken".
+- **Schoolnaam wordt genormaliseerd** — `Trevianum`, `trevianum.magister.net` en `https://trevianum.magister.net/` worden allemaal `trevianum`.
+
 ## ✨ Nieuw in v2.3.x
 
 - **Dashboard-card ingebouwd** — de Magister School Card wordt nu meegeleverd in `custom_components/magister_school/www/` en bij het opstarten automatisch als dashboard-resource geregistreerd. Geen aparte HACS-plugin meer nodig; integratie en card blijven altijd in versie gelijk.
@@ -61,7 +67,11 @@ Integreer Magister schoolinformatie direct in je Home Assistant dashboard. Toon 
 2. Klik op **+ Add Integration**
 3. Zoek naar **"Magister School"**
 4. Voer je inloggegevens in:
-   - **School**: Je schoolnaam (bijv. `zuidermavo`, zónder `.magister.net`)
+   - **School**: de **URL-naam** van je school, dus het deel vóór `.magister.net`
+     (bijv. `trevianum` voor `https://trevianum.magister.net`). Gebruik **niet**
+     de weergavenaam met spaties of `&` — die kan Magister niet als subdomein
+     gebruiken. `Trevianum`, `trevianum.magister.net` en een volledige URL worden
+     automatisch genormaliseerd.
    - **Gebruikersnaam**: Je Magister gebruikersnaam
    - **Wachtwoord**: Je Magister wachtwoord
    - **2FA/TOTP-secret** (optioneel): alleen nodig bij 2FA. Vul hier de **secret key** in (de lange base32-string uit je authenticator-app, bijv. via ProtonPass of Aegis), **niet** de 6-cijferige code zelf.

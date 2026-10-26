@@ -791,12 +791,29 @@ class TestSchoolTimes:
         items = self.helpers()["_get_school_start_items"]({"afspraken": afspraken})
         return min((a["start"] for a in items), default=None)
 
-    def test_start_includes_timed_algemeen_item(self):
+    def test_start_includes_nulmeting_with_subject(self):
+        """Issue #43: a nulmeting has a subject, so it moves the start."""
         afspraken = [
-            {"soort": "Algemeen", "start": "2026-10-12 06:30:00", "einde": "2026-10-12 06:45:00", "duurt_hele_dag": False, "is_uitval": False},
+            {"soort": "Algemeen", "start": "2026-10-12 06:30:00", "einde": "2026-10-12 06:45:00", "duurt_hele_dag": False, "is_uitval": False, "vak": "Wiskunde", "docent": ""},
             {"soort": "Les", "start": "2026-10-12 07:25:00", "einde": "2026-10-12 08:15:00", "duurt_hele_dag": False, "is_uitval": False},
         ]
         assert self.start_of_day(afspraken) == "2026-10-12 06:30:00"
+
+    def test_start_includes_mentor_meeting_with_teacher(self):
+        afspraken = [
+            {"soort": "Algemeen", "start": "2026-10-12 06:30:00", "einde": "2026-10-12 06:45:00", "duurt_hele_dag": False, "is_uitval": False, "vak": "", "docent": "I.J.E. Koot"},
+            {"soort": "Les", "start": "2026-10-12 07:25:00", "einde": "2026-10-12 08:15:00", "duurt_hele_dag": False, "is_uitval": False},
+        ]
+        assert self.start_of_day(afspraken) == "2026-10-12 06:30:00"
+
+    def test_start_excludes_room_booking_without_subject_or_teacher(self):
+        """'Studie na school' / '10 leerlingen' carry neither, so they are ignored."""
+        for titel in ("Studie na school", "10 leerlingen"):
+            afspraken = [
+                {"soort": "Algemeen", "start": "2026-10-28 07:00:00", "einde": "2026-10-28 07:30:00", "duurt_hele_dag": False, "is_uitval": False, "vak": "", "docent": "", "omschrijving": titel},
+                {"soort": "Les", "start": "2026-10-28 08:35:00", "einde": "2026-10-28 09:25:00", "duurt_hele_dag": False, "is_uitval": False},
+            ]
+            assert self.start_of_day(afspraken) == "2026-10-28 08:35:00", titel
 
     def test_end_uses_lessons_only(self):
         """The recurring optional 'Studie na school' must not extend the day."""

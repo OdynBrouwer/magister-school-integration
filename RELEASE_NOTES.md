@@ -9,7 +9,7 @@ Magister School Integration v2.3.1 splitst de schooltijden in een start- en eind
 - **Schooltijden: start en eind gesplitst (#43)** - `school_start_vandaag` en `school_einde_vandaag` gebruikten dezelfde lijst, waardoor optionele items de tijden vervuilden.
   - **Start** is het vroegste moment waarop je kind aanwezig moet zijn. Naast lessen tellen geplande niet-lesitems mee (nulmeting, mentorgesprek), want die maken de start vroeger.
   - **Eind** is het einde van de laatste **echte les**. "Studie na school" (`stc`, elke werkdag in een studielokaal) en avondblokken duwen de eindtijd niet meer op.
-  - Niet-lesitems tellen alleen binnen 05:00-18:00, niet als ze elke werkdag terugkeren, en niet bij bloktypes (`Roostervrij`, `Blokkade`, `Standby`).
+  - Een niet-lesitem telt alleen als het een **vak of docent** heeft, binnen 05:00-18:00 valt, niet elke werkdag terugkeert en geen bloktype is. Magister gebruikt `Algemeen` namelijk ook voor lokaal- en groepsboekingen: "Studie na school" en avondblokken als "10 leerlingen" hebben geen vak en geen docent, terwijl alle lessen en een nulmeting die wel hebben.
 - **Nieuwe attributen `herhalend` en `herhalend_elke_werkdag`** - Magister's `Herhaling`/`HerhaalStatus` werden niet doorgegeven, waardoor in Home Assistant niet te zien was of een item een terugkerende achtergrondboeking is.
 - **Ongeldige schoolnaam gaf een misleidende fout (#45)** - een weergavenaam met spaties of `&` kan nooit een tenant-slug zijn. Het formulier meldt nu `invalid_school` met uitleg, en `Trevianum`, `trevianum.magister.net` en volledige URL's worden genormaliseerd naar `trevianum`.
 

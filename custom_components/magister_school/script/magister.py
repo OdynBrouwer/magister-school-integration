@@ -460,6 +460,20 @@ class Magister:
 
         d["password"] = password
 
+        def skip_fido_promo(r):
+            """Skip Magister's passkey promo ("pairfidopromo").
+
+            Magister can show it right after the password step or, for accounts
+            with 2FA, after the soft-token step (#46).
+            """
+            if r.get('action') != 'pairfidopromo':
+                return r
+            self.logprint("\n---- skip pair-fido promo ----")
+            # Keep the existing username/password/session fields on `d`.
+            d["reason"] = "non-user-verifying-platform-authenticator"
+            d["userVerifyingPlatformAuthenticator"] = None
+            return self.httpreq(f"https://{self.magisterserver}/challenges/skip-pair-fido-promo", json.dumps(d))
+
         self.logprint("\n---- password ----")
         r = self.httpreq(f"https://{self.magisterserver}/challenges/password", json.dumps(d))
 
@@ -467,12 +481,7 @@ class Magister:
         if r.get('action') == "changepassword":
             print("ERROR Magister wants you to change your password!!")
             return
-        if r.get('action') == 'pairfidopromo':
-            # Keep the existing username/password/session fields on `d`.
-            d["reason"] = "non-user-verifying-platform-authenticator"
-            d["userVerifyingPlatformAuthenticator"] = None
-
-            r = self.httpreq(f"https://{self.magisterserver}/challenges/skip-pair-fido-promo", json.dumps(d))
+        r = skip_fido_promo(r)
 
 
         if r.get('action') in ('soft-token', 'softtoken'):
@@ -486,6 +495,7 @@ class Magister:
             totp_code = generate_totp(totp_secret)
             d["Code"] = totp_code
             r = self.httpreq(f"https://{self.magisterserver}/challenges/soft-token", json.dumps(d))
+            r = skip_fido_promo(r)
 
 
         if not r.get('redirectURL') or r.get('error'):

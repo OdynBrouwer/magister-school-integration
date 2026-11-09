@@ -70,6 +70,12 @@ Integreer Magister schoolinformatie direct in je Home Assistant dashboard. Toon 
 1. Kopieer de `custom_components/magister_school` map naar je `custom_components` directory
 2. Herstart Home Assistant
 
+### Blueprints
+
+Deze repository bevat optionele blueprints voor meldingen en een dagelijks
+Magister-overzicht. Open de [blueprint-documentatie](blueprints/README.md) voor
+importknoppen, installatie en de optionele helpers.
+
 ## ⚙️ Configuratie
 
 1. Ga naar **Settings** → **Devices & Services**
@@ -499,6 +505,5 @@ Deze integratie is niet officieel geassocieerd met Magister. Gebruik op eigen ri
 ---
 
 **Made with ❤️ for the Home Assistant community**
-
 
 

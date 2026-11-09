@@ -1,0 +1,34 @@
+# Magister - helpers (optioneel)
+#
+# Plaats dit bestand als: config/packages/magister_helpers.yaml
+# Daarna: Home Assistant herstarten (of "Snelle herlaad" van de YAML-config).
+#
+# LET OP: definieer deze helpers maar op één plek. Heb je ze al in een ander
+# package of in de UI (Instellingen > Helpers) staan, laat dit bestand dan weg.
+#
+# Deze helpers zijn alleen nodig als je in de Magister-blueprints een
+# hoofdschakelaar of per-type schakelaar wilt kiezen. Zonder helpers werken de
+# blueprints ook: laat de schakelaarvelden dan gewoon leeg.
+
+input_boolean:
+  magister_meldingen:
+    name: Magister meldingen
+    icon: mdi:bell
+  magister_lesuitval:
+    name: Magister lesuitvalmeldingen
+    icon: mdi:calendar-remove
+  magister_roosterwijzigingen:
+    name: Magister roosterwijzigingen
+    icon: mdi:calendar-edit
+  magister_huiswerk:
+    name: Magister huiswerkmeldingen
+    icon: mdi:book-open-variant
+  magister_cijfers:
+    name: Magister cijfermeldingen
+    icon: mdi:school
+  magister_absenties:
+    name: Magister absentiemeldingen
+    icon: mdi:account-alert
+  magister_dagoverzicht:
+    name: Magister dagelijks overzicht
+    icon: mdi:calendar-today

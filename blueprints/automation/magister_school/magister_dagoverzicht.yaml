@@ -1,0 +1,152 @@
+blueprint:
+  name: Magister - dagelijks overzicht
+  description: |
+    ## Magister - dagelijks overzicht
+
+    Stuurt op de gekozen dagen een samenvatting van de schooldag: aantal
+    afspraken, begin- en eindtijd, het eerstvolgende vak en het aantal open
+    huiswerkopdrachten.
+
+    ### Gebruik
+    1. Kies de Magister-overzichtsensor van het kind en de notify-entiteit van
+       je telefoon.
+    2. Kies het tijdstip (standaard 07:00) en de dagen (standaard ma-vr).
+    3. Optioneel: kies een `input_boolean` als hoofdschakelaar (aanmaken via
+       **Instellingen → Apparaten & diensten → Helpers → Boolean**). Leeg laten
+       = altijd melden. Je kunt de automation ook gewoon zelf uitzetten.
+
+    ### Vereist
+    - De integratie `magister_school` met de overzichtsensor per kind.
+    - Home Assistant 2024.8 of nieuwer (notify-entiteiten).
+
+    ### Tip
+    Zet **Alleen op dagen met lessen** aan (standaard) om geen lege overzichten
+    te krijgen in vakanties en weekenden.
+  domain: automation
+  author: Magister School
+  homeassistant:
+    min_version: 2024.8.0
+  input:
+    magister_sensor:
+      name: Magister-sensor
+      description: De overzichtsensor van het kind (bijv. sensor.magister_odyn_brouwer).
+      selector:
+        entity:
+          filter:
+            - integration: magister_school
+              domain: sensor
+    notify_target:
+      name: Notificatie-doel
+      description: >-
+        De notify-entiteit van de telefoon of het account dat de melding
+        ontvangt. Verplicht om meldingen te krijgen; leeg laten mag, dan doet de
+        automation niets.
+      default: ""
+      selector:
+        entity:
+          filter:
+            - domain: notify
+          multiple: false
+    tijd:
+      name: Tijdstip
+      description: Hoe laat moet het overzicht binnenkomen?
+      default: "07:00:00"
+      selector:
+        time:
+    weekdagen:
+      name: Dagen
+      description: Op welke dagen wordt het overzicht verstuurd?
+      default:
+        - mon
+        - tue
+        - wed
+        - thu
+        - fri
+      selector:
+        select:
+          multiple: true
+          options:
+            - label: Maandag
+              value: mon
+            - label: Dinsdag
+              value: tue
+            - label: Woensdag
+              value: wed
+            - label: Donderdag
+              value: thu
+            - label: Vrijdag
+              value: fri
+            - label: Zaterdag
+              value: sat
+            - label: Zondag
+              value: sun
+    alleen_bij_lessen:
+      name: Alleen op dagen met lessen
+      description: Slaat het overzicht over als er die dag geen afspraken zijn.
+      default: true
+      selector:
+        boolean:
+    master_switch:
+      name: Hoofdschakelaar (optioneel)
+      description: Alleen melden als deze helper aan staat. Leeg laten = altijd melden.
+      default: ""
+      selector:
+        entity:
+          filter:
+            - domain: input_boolean
+          multiple: false
+
+variables:
+  magister_sensor: !input magister_sensor
+  alleen_bij_lessen: !input alleen_bij_lessen
+  notify_target: !input notify_target
+  master_switch: !input master_switch
+
+trigger:
+  - platform: time
+    at: !input tijd
+
+condition:
+  - condition: template
+    alias: "Notificatiedoel ingesteld"
+    value_template: "{{ notify_target is defined and notify_target != none and notify_target != '' }}"
+  - condition: template
+    alias: "Hoofdschakelaar"
+    value_template: "{{ not master_switch or is_state(master_switch, 'on') }}"
+  - condition: template
+    alias: "Sensor beschikbaar"
+    value_template: "{{ not is_state(magister_sensor, ['unknown', 'unavailable']) }}"
+  - condition: time
+    weekday: !input weekdagen
+  - condition: template
+    alias: "Alleen op dagen met lessen"
+    value_template: >-
+      {{ not alleen_bij_lessen
+         or (state_attr(magister_sensor, 'aantal_afspraken_vandaag') | default(0) | int) > 0 }}
+
+action:
+  - variables:
+      school_start: >-
+        {{ state_attr(magister_sensor, 'school_start_vandaag')
+           if state_attr(magister_sensor, 'school_start_vandaag') not in [none, '', 'Geen', 'unknown', 'unavailable'] else '' }}
+      school_einde: >-
+        {{ state_attr(magister_sensor, 'school_einde_vandaag')
+           if state_attr(magister_sensor, 'school_einde_vandaag') not in [none, '', 'Geen', 'unknown', 'unavailable'] else '' }}
+      volgende_vak: >-
+        {{ state_attr(magister_sensor, 'volgende_vak')
+           if state_attr(magister_sensor, 'volgende_vak') not in [none, '', 'Geen', 'unknown', 'unavailable'] else '' }}
+      aantal_afspraken: "{{ state_attr(magister_sensor, 'aantal_afspraken_vandaag') | default(0) | int }}"
+      aantal_huiswerk: "{{ state_attr(magister_sensor, 'aantal_huiswerk_onafgerond') | default(0) | int }}"
+  - action: notify.send_message
+    target:
+      entity_id: !input notify_target
+    data:
+      title: Magister - dagoverzicht
+      message: >-
+        Vandaag {{ aantal_afspraken }} afspraken.
+        {% if school_start %}School begint om {{ school_start }}.{% else %}Geen lessen vandaag.{% endif %}
+        {% if school_einde %} Verwacht einde: {{ school_einde }}.{% endif %}
+        {% if volgende_vak %} Eerstvolgende vak: {{ volgende_vak }}.{% endif %}
+        Openstaand huiswerk: {{ aantal_huiswerk }}.
+
+mode: single

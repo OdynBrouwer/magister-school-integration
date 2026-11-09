@@ -1,0 +1,252 @@
+blueprint:
+  name: Magister - melding bij wijziging
+  description: |
+    ## Magister - melding bij wijziging
+
+    Stuurt een pushmelding wanneer Magister iets **nieuws** meldt:
+    lesuitval, nieuw huiswerk, een nieuw cijfer, een nieuwe absentie of een
+    roosterwijziging.
+
+    Items die er al stonden geven géén tweede melding, en na een herstart van
+    Home Assistant word je niet overspoeld met herhalingen.
+
+    ### Gebruik
+    1. Maak **één automation per meldingstype** (dus vijf keer deze blueprint).
+    2. Kies de Magister-overzichtsensor van het kind en de notify-entiteit van
+       je telefoon.
+    3. Optioneel: kies een `input_boolean` als hoofdschakelaar en/of als
+       schakelaar voor dit type. Maak die aan via **Instellingen → Apparaten &
+       diensten → Helpers → Boolean**. Laat je ze leeg, dan meldt de automation
+       altijd.
+
+    ### Vereist
+    - De integratie `magister_school` met de overzichtsensor per kind.
+    - Home Assistant 2024.8 of nieuwer (notify-entiteiten).
+
+    ### Hoe de meldingen werken
+    - **Lesuitval**: alleen als de les zelf vervallen is. Wordt een les
+      vervangen (andere docent/lokaal), dan is dat een roosterwijziging.
+    - **Huiswerk / cijfers / absenties**: alleen bij nieuwe items; aanpassingen
+      aan bestaande items worden niet gemeld.
+    - **Roosterwijzigingen**: wijzigingen in tijd, lokaal, docent of vak.
+  domain: automation
+  author: Magister School
+  homeassistant:
+    min_version: 2024.8.0
+  input:
+    magister_sensor:
+      name: Magister-sensor
+      description: De overzichtsensor van het kind (bijv. sensor.magister_odyn_brouwer).
+      selector:
+        entity:
+          filter:
+            - integration: magister_school
+              domain: sensor
+    notify_target:
+      name: Notificatie-doel
+      description: >-
+        De notify-entiteit van de telefoon of het account dat de melding
+        ontvangt. Verplicht om meldingen te krijgen; leeg laten mag, dan doet de
+        automation niets.
+      default: ""
+      selector:
+        entity:
+          filter:
+            - domain: notify
+          multiple: false
+    soort:
+      name: Soort melding
+      description: Welk type melding verstuurt deze automation?
+      default: lesuitval
+      selector:
+        select:
+          options:
+            - label: Lesuitval
+              value: lesuitval
+            - label: Nieuw huiswerk
+              value: huiswerk
+            - label: Nieuwe cijfers
+              value: cijfers
+            - label: Nieuwe absentie
+              value: absenties
+            - label: Roosterwijziging
+              value: roosterwijziging
+    master_switch:
+      name: Hoofdschakelaar (optioneel)
+      description: Alleen melden als deze helper aan staat. Leeg laten = altijd melden.
+      default: ""
+      selector:
+        entity:
+          filter:
+            - domain: input_boolean
+          multiple: false
+    type_switch:
+      name: Schakelaar voor dit meldingstype (optioneel)
+      description: Alleen melden als deze helper aan staat. Leeg laten = altijd melden.
+      default: ""
+      selector:
+        entity:
+          filter:
+            - domain: input_boolean
+          multiple: false
+
+variables:
+  soort: !input soort
+  attribuut: >-
+    {{ {'lesuitval': 'afspraken',
+        'huiswerk': 'afspraken',
+        'cijfers': 'voortgangscijfers',
+        'absenties': 'absenties',
+        'roosterwijziging': 'afspraken'}[soort] }}
+  identiteit: >-
+    {{ {'lesuitval': ['start', 'vak_id', 'lesuurstart', 'categorie'],
+        'huiswerk': ['vak', 'start', 'omschrijving'],
+        'cijfers': ['vak', 'kolom', 'periode'],
+        'absenties': ['start', 'code', 'lesuur'],
+        'roosterwijziging': ['vak', 'start', 'omschrijving', 'lokaal', 'docent']}[soort] }}
+  notify_target: !input notify_target
+  master_switch: !input master_switch
+  type_switch: !input type_switch
+
+trigger:
+  - platform: state
+    entity_id: !input magister_sensor
+
+condition:
+  - condition: template
+    alias: "Notificatiedoel ingesteld"
+    value_template: "{{ notify_target is defined and notify_target != none and notify_target != '' }}"
+  - condition: template
+    alias: "Alleen bij een echte statusovergang tussen twee beschikbare standen"
+    value_template: >-
+      {{ trigger.from_state is defined and trigger.from_state is not none
+         and trigger.to_state is defined and trigger.to_state is not none
+         and trigger.from_state.state not in ['unknown', 'unavailable']
+         and trigger.to_state.state not in ['unknown', 'unavailable']
+         and attribuut in (trigger.from_state.attributes | default({})) }}
+  - condition: template
+    alias: "Schakelaars"
+    value_template: >-
+      {{ (not master_switch or is_state(master_switch, 'on'))
+         and (not type_switch or is_state(type_switch, 'on')) }}
+
+action:
+  - variables:
+      old_items: >-
+        {{ (trigger.from_state.attributes[attribuut] | default([], true))
+           if trigger.from_state is defined and trigger.from_state else [] }}
+      new_items: >-
+        {{ (trigger.to_state.attributes[attribuut] | default([], true))
+           if trigger.to_state is defined and trigger.to_state else [] }}
+  - repeat:
+      for_each: "{{ new_items }}"
+      sequence:
+        - variables:
+            item: "{{ repeat.item }}"
+            check: >-
+              {% set nieuw = namespace(k=[]) %}
+              {% for v in identiteit %}{% set nieuw.k = nieuw.k + [item[v] | default('')] %}{% endfor %}
+              {% set ns = namespace(bestond=false, uitval=false) %}
+              {% for old in old_items %}
+                {% set oud = namespace(k=[]) %}
+                {% for v in identiteit %}{% set oud.k = oud.k + [old[v] | default('')] %}{% endfor %}
+                {% if oud.k == nieuw.k %}
+                  {% set ns.bestond = true %}
+                  {% if old.is_uitval | default(false) | bool %}{% set ns.uitval = true %}{% endif %}
+                {% endif %}
+              {% endfor %}
+              {{ {'bestond': ns.bestond, 'uitval': ns.uitval} | tojson }}
+            bestond_al: "{{ (check | from_json).bestond }}"
+            al_uitval: "{{ (check | from_json).uitval }}"
+        - choose:
+            - conditions:
+                - condition: template
+                  alias: "Lesuitval"
+                  value_template: >-
+                    {{ soort == 'lesuitval'
+                       and item.categorie | default('') == 'les'
+                       and item.is_uitval | default(false) | bool
+                       and not (al_uitval | bool) }}
+              sequence:
+                - action: notify.send_message
+                  target:
+                    entity_id: !input notify_target
+                  data:
+                    title: Magister - lesuitval
+                    message: >-
+                      {{ item.vak | default('Les') }} is uitgevallen.
+                      {% if item.start is defined and item.einde is defined and item.start not in ['?', ''] %}Tijd: {{ as_datetime(item.start).strftime('%d-%m-%Y %H:%M') }}–{{ as_datetime(item.einde).strftime('%H:%M') }}.{% endif %}
+                      {% if item.lokaal is defined and item.lokaal %} Lokaal: {{ item.lokaal }}.{% endif %}
+                      {% if item.docent is defined and item.docent %} Docent: {{ item.docent }}.{% endif %}
+                      {% if item.status is defined %} Status: {{ item.status }}.{% endif %}
+            - conditions:
+                - condition: template
+                  alias: "Nieuw huiswerk"
+                  value_template: >-
+                    {{ soort == 'huiswerk'
+                       and item.is_huiswerk | default(false) | bool
+                       and not (item.is_afgerond | default(false) | bool)
+                       and not (bestond_al | bool) }}
+              sequence:
+                - action: notify.send_message
+                  target:
+                    entity_id: !input notify_target
+                  data:
+                    title: Magister - nieuw huiswerk
+                    message: >-
+                      {{ item.vak | default('Onbekend vak', true) }}:
+                      {{ item.omschrijving | default('Nieuwe opdracht', true) }}
+                      {% if item.start is defined and item.start not in ['?', ''] %} Voor: {{ as_datetime(item.start).strftime('%d-%m-%Y') }}.{% endif %}
+            - conditions:
+                - condition: template
+                  alias: "Nieuw cijfer"
+                  value_template: >-
+                    {{ soort == 'cijfers' and not (bestond_al | bool) }}
+              sequence:
+                - action: notify.send_message
+                  target:
+                    entity_id: !input notify_target
+                  data:
+                    title: Magister - nieuw cijfer
+                    message: >-
+                      {{ item.vak | default('Onbekend vak') }}:
+                      {{ item.omschrijving | default(item.kolom | default('Nieuw cijfer')) }}
+                      = {{ item.waarde | default(item.cijfer | default('onbekend')) }}
+            - conditions:
+                - condition: template
+                  alias: "Nieuwe absentie"
+                  value_template: >-
+                    {{ soort == 'absenties' and not (bestond_al | bool) }}
+              sequence:
+                - action: notify.send_message
+                  target:
+                    entity_id: !input notify_target
+                  data:
+                    title: Magister - absentie
+                    message: >-
+                      Nieuwe absentiemelding:
+                      {{ item.omschrijving | default(item.code | default('Absentie')) }}
+                      {% if item.start is defined %} op {{ item.start }}.{% endif %}
+                      {% if item.geoorloofd is defined %} Geoorloofd: {{ item.geoorloofd }}.{% endif %}
+            - conditions:
+                - condition: template
+                  alias: "Roosterwijziging"
+                  value_template: >-
+                    {{ soort == 'roosterwijziging'
+                       and item.was_afwijkend | default(false) | bool
+                       and not (item.is_uitval | default(false) | bool)
+                       and not (bestond_al | bool) }}
+              sequence:
+                - action: notify.send_message
+                  target:
+                    entity_id: !input notify_target
+                  data:
+                    title: Magister - roosterwijziging
+                    message: >-
+                      Wijziging: {{ item.vak | default(item.omschrijving | default('Afspraak')) }}.
+                      {% if item.start is defined %}Start: {{ item.start }}.{% endif %}
+                      {% if item.lokaal is defined %} Lokaal: {{ item.lokaal }}.{% endif %}
+                      {% if item.docent is defined %} Docent: {{ item.docent }}.{% endif %}
+
+mode: queued
+max: 10

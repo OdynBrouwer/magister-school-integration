@@ -1,40 +1,44 @@
-# Forum-/communitypost (concept)
+# Forum/community post
 
-> Concept voor publicatie. Vertaal naar het Engels als je in het internationale
-> HA-forum post.
+> Draft for publication in the international Home Assistant forum.
 
 ---
 
-**Titel:** Magister (NL) – blueprints voor lesuitval, huiswerk, cijfers, absenties en roosterwijzigingen
+**Title:** Magister (NL) – blueprints for cancelled lessons, homework, grades, absences and schedule changes
 
-Hoi allemaal,
+Hi everyone,
 
-Voor de Magister-integratie (`magister_school`) heb ik twee blueprints gemaakt,
-zodat je meldingen kunt krijgen zonder YAML aan te passen:
+I created two blueprints for the Magister integration (`magister_school`) so
+you can receive notifications without editing any YAML:
 
-- **Magister - melding bij wijziging** – lesuitval, nieuw huiswerk, nieuwe
-  cijfers, nieuwe absenties en roosterwijzigingen. Je kiest per automation het
-  type; de blueprint regelt de rest.
-- **Magister - dagelijks overzicht** – elke schooldag op een zelfgekozen tijd
-  een samenvatting: aantal afspraken, begin-/eindtijd, eerstvolgende vak en het
-  aantal open huiswerkopdrachten.
+- **Magister - notification on change** – cancelled lessons, new homework,
+  new grades, new absences and schedule changes. Choose the notification type
+  for each automation; the blueprint handles the rest.
+- **Magister - daily overview** – a summary of the school day at a time of
+  your choice: number of appointments, start/end time, next subject and the
+  number of outstanding homework assignments.
 
-Wat erin zit:
+Features:
 
-- alleen **nieuwe** items geven een melding (dedupe per type, dus geen
-  herhalingen bij elke verversing);
-- **geen** push-spam na een herstart van Home Assistant;
-- werkt per kind (je kiest de overzichtsensor);
-- optionele `input_boolean` als hoofdschakelaar en per meldingstype;
-- meldingen via `notify.send_message` (Companion-app), HA 2024.8+.
+- only **new** items trigger a notification (deduplicated per type, so there
+  are no repeated notifications on every refresh);
+- **no** notification spam after restarting Home Assistant;
+- supports multiple children (select the overview sensor for each child);
+- optional `input_boolean` master and per-notification-type switches;
+- notifications through `notify.send_message` (Companion app), Home Assistant
+  2024.8 or newer.
 
-Importeren:
+Import:
 
-- Melding bij wijziging: https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FOdynBrouwer%2Fmagister-school-integration%2Fmain%2Fblueprints%2Fautomation%2Fmagister_school%2Fmagister_melding.yaml
-- Dagelijks overzicht: https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FOdynBrouwer%2Fmagister-school-integration%2Fmain%2Fblueprints%2Fautomation%2Fmagister_school%2Fmagister_dagoverzicht.yaml
+- Notification on change:
 
-Let op: een blueprint kan géén helpers aanmaken. Wil je schakelaars gebruiken,
-zet dan het optionele package in `config/packages/`, of laat de schakelaarvelden
-leeg en gebruik de aan/uit-schakelaar van de automation.
+  [![Open the blueprint import dialog in Home Assistant.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FOdynBrouwer%2Fmagister-school-integration%2Fmain%2Fblueprints%2Fautomation%2Fmagister_school%2Fmagister_melding.yaml)
+- Daily overview:
 
-Feedback en verbeteringen zijn welkom!
+  [![Open the blueprint import dialog in Home Assistant.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FOdynBrouwer%2Fmagister-school-integration%2Fmain%2Fblueprints%2Fautomation%2Fmagister_school%2Fmagister_dagoverzicht.yaml)
+
+Note: a blueprint cannot create helpers. If you want to use switches, add the
+optional package to `config/packages/`, or leave the switch fields empty and
+use the automation's enabled/disabled toggle.
+
+Feedback and improvements are welcome!

@@ -1,3 +1,20 @@
+# Release v2.3.2b1 (beta)
+
+## GitHub release text
+
+Magister School Integration v2.3.2b1 improves script error reporting. Unexpected Magister script exceptions are now included in the Home Assistant log instead of only in `/config/magister_error.log`.
+
+### Fixes
+
+- Unexpected script exceptions are printed to stderr and remain available in `/config/magister_error.log`.
+- Empty script stderr output gets a clear fallback mentioning `/config/magister_error.log`.
+
+### HACS update text
+
+Beta diagnostic update: unexpected Magister script failures now show their real exception in the Home Assistant log.
+
+## Previous release: v2.3.2b0
+
 # Release v2.3.2b0 (beta)
 
 ## GitHub release text

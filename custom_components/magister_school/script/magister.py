@@ -1214,7 +1214,7 @@ if __name__ == '__main__':
         print(f"Magister HTTP request returned HTTP {err.code}", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
-        # behoud originele error-logbestanden gedrag
+        detail = f"{type(e).__name__}: {e}" if str(e) else type(e).__name__
         try:
             with open("/config/magister_error.log", "w") as f:
                 f.write("FOUT IN MAGISTER SCRIPT:\n")
@@ -1222,6 +1222,6 @@ if __name__ == '__main__':
                 f.write("\n\n")
                 f.write(traceback.format_exc())
         except Exception:
-            # als we niet naar /config kunnen schrijven, print kort naar stderr
-            print("FOUT IN MAGISTER SCRIPT:", e, file=sys.stderr)
+            pass
+        print(f"FOUT IN MAGISTER SCRIPT: {detail}", file=sys.stderr)
         sys.exit(1)

@@ -532,6 +532,14 @@ def test_cached_account_failure_relogs_once_and_retries_account():
     assert "Magister authorization failed" in content
 
 
+def test_unexpected_script_errors_are_also_printed_to_stderr():
+    with open(script_path, encoding="utf-8") as f:
+        content = f.read()
+
+    assert 'print(f"FOUT IN MAGISTER SCRIPT: {detail}", file=sys.stderr)' in content
+    assert 'detail = f"{type(e).__name__}: {e}" if str(e) else type(e).__name__' in content
+
+
 @pytest.mark.parametrize("skipped", [0, 2])
 def test_api_reports_incomplete_sections(monkeypatch, caplog, skipped):
     import json

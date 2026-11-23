@@ -480,6 +480,58 @@ def test_http_401_is_not_converted_to_empty_data():
     assert caught.value.code == 401
 
 
+@pytest.mark.parametrize("status", [403, 503])
+def test_http_authorization_and_server_errors_are_not_treated_as_json(status):
+    from unittest.mock import Mock
+
+    response = Mock()
+    response.status = status
+    response.code = status
+    response.headers = {"content-type": "text/html"}
+    response.read.return_value = b"<html>error</html>"
+    response.__enter__ = Mock(return_value=response)
+    response.__exit__ = Mock(return_value=False)
+
+    client = magister.Magister(SimpleNamespace(
+        xsrftoken=None,
+        accesstoken="stale-token",
+        debug=False,
+        json=True,
+        magisterserver="example.invalid",
+        schoolserver="example.invalid",
+    ))
+    client.opener.open = Mock(return_value=response)
+
+    if status == 403:
+        with pytest.raises(magister.urllib.error.HTTPError) as caught:
+            client.httpreq("https://example.invalid/api/account")
+        assert caught.value.code == 403
+    else:
+        with pytest.raises(RuntimeError, match="HTTP 503"):
+            client.httpreq("https://example.invalid/api/account")
+
+
+def test_invalidate_access_token_removes_only_cache_file(tmp_path):
+    cache = tmp_path / "magister_cache"
+    cache.write_text("accesstoken=stale", encoding="utf-8")
+
+    magister.invalidate_access_token(str(cache))
+
+    assert not cache.exists()
+    magister.invalidate_access_token(str(cache))
+    assert not cache.exists()
+
+
+def test_cached_account_failure_relogs_once_and_retries_account():
+    with open(script_path, encoding="utf-8") as f:
+        content = f.read()
+
+    assert "used_cached_token = bool(args.accesstoken)" in content
+    assert "invalidate_access_token(args.cache)" in content
+    assert 'd = mg.req("account")' in content
+    assert "Magister authorization failed" in content
+
+
 @pytest.mark.parametrize("skipped", [0, 2])
 def test_api_reports_incomplete_sections(monkeypatch, caplog, skipped):
     import json

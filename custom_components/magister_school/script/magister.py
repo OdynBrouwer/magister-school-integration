@@ -301,7 +301,17 @@ class Magister:
         if data:
             kwargs["data"] = data
         response, raw = self._read_response(req, allow_http_error=True, **kwargs)
+        status = getattr(response, "status", None)
+        if status is None:
+            status = getattr(response, "code", None)
         ctype = response.headers.get("content-type", "")
+        is_json = "application/json" in ctype
+        if status in (401, 403) and not is_json:
+            raise urllib.error.HTTPError(
+                url, status, "Magister authorization failed", response.headers, None
+            )
+        if status is not None and status >= 500 and not is_json:
+            raise RuntimeError(f"Magister server returned HTTP {status}")
         if "application/json" in ctype:
             js = json.loads(raw)
             # alleen loggen als debug én niet json-uitvoer
@@ -633,6 +643,13 @@ def store_access_token(cache: str, token: str) -> None:
         print(f"expires={exp:%Y-%m-%dT%H:%M:%SZ}", file=fh)
         print(f"accesstoken={token}", file=fh)
 
+def invalidate_access_token(cache: str) -> None:
+    """Remove a cached access token after it is rejected by Magister."""
+    try:
+        Path(cache).unlink()
+    except FileNotFoundError:
+        pass
+
 def safe_datum_field(item, *keys):
     """Return first found datum from item for given keys (passes through datum())."""
     for k in keys:
@@ -840,6 +857,7 @@ def main():
         args.cache = local_cache if local_cache.exists() else Path.home() / cache_name
 
     # Cache laden
+    accesstoken_before_cache = bool(args.accesstoken)
     acfg = None
     if args.cache.exists():
         try:
@@ -852,6 +870,7 @@ def main():
 
     mg = Magister(args)
 
+    used_cached_token = bool(args.accesstoken) and not accesstoken_before_cache
     if not args.accesstoken:
         if not mg.login(args.username, args.password):
             if not args.json:
@@ -883,11 +902,32 @@ def main():
 
     history_path, appointment_history = _load_appointment_history(args.cache, getattr(args, "history_file", None))
 
-    d = mg.req("account")
-
-    person = object_data(d.get("Persoon"))
-    if not isinstance(person.get("Id"), (int, str)) or person["Id"] == "":
-        raise ValueError("Magister account response has no valid person ID")
+    try:
+        d = mg.req("account")
+        person = object_data(d.get("Persoon"))
+        if not isinstance(person.get("Id"), (int, str)) or person["Id"] == "":
+            raise ValueError("Magister account response has no valid person ID")
+    except (urllib.error.HTTPError, RuntimeError, ValueError):
+        if not used_cached_token:
+            raise
+        invalidate_access_token(args.cache)
+        args.accesstoken = None
+        mg = Magister(args)
+        if not mg.login(args.username, args.password):
+            if getattr(args, "json", False):
+                print("Login failed after cached Magister session was rejected", file=sys.stderr)
+                print(AUTH_FAILED_MARKER, file=sys.stderr)
+            sys.exit(EXIT_AUTH_FAILED)
+        if not mg.access_token:
+            if getattr(args, "json", False):
+                print("Login returned no access token after cached session was rejected", file=sys.stderr)
+                print(AUTH_FAILED_MARKER, file=sys.stderr)
+            sys.exit(EXIT_AUTH_FAILED)
+        store_access_token(args.cache, mg.access_token)
+        d = mg.req("account")
+        person = object_data(d.get("Persoon"))
+        if not isinstance(person.get("Id"), (int, str)) or person["Id"] == "":
+            raise ValueError("Magister account response has no valid person ID")
 
     k = mg.req("personen", person["Id"], "kinderen")
     warnings = {}
@@ -1156,6 +1196,13 @@ if __name__ == '__main__':
     except TimeoutError as err:
         print(str(err), file=sys.stderr)
         sys.exit(75)
+    except urllib.error.HTTPError as err:
+        if err.code in (401, 403):
+            print("Magister authorization failed", file=sys.stderr)
+            print(AUTH_FAILED_MARKER, file=sys.stderr)
+            sys.exit(EXIT_AUTH_FAILED)
+        print(f"Magister HTTP request returned HTTP {err.code}", file=sys.stderr)
+        sys.exit(1)
     except Exception as e:
         # behoud originele error-logbestanden gedrag
         try:

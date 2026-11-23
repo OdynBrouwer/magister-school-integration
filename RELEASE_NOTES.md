@@ -1,3 +1,21 @@
+# Release v2.3.2b3 (beta)
+
+## GitHub release text
+
+Magister School Integration v2.3.2b3 makes temporary Magister server outages clear to users: HTTP 502, 503 and 504 are shown as "Magister is temporarily unavailable" instead of as a generic integration setup failure.
+
+### Fixes
+
+- Adds a dedicated Home Assistant repair issue for temporary Magister outages.
+- Keeps automatic retries active.
+- Clears the outage issue automatically when Magister data returns.
+
+### HACS update text
+
+Beta fix for Magister outages: temporary HTTP 502/503/504 responses now clearly say that Magister or Trevianum is unavailable, rather than blaming the integration.
+
+## Previous release: v2.3.2b2
+
 # Release v2.3.2b2 (beta)
 
 ## GitHub release text

@@ -48,6 +48,10 @@
   },
   "title": "Magister School",
   "issues": {
+    "magister_unavailable": {
+      "title": "Magister is temporarily unavailable: {name}",
+      "description": "Magister or Trevianum is reporting a temporary service issue (HTTP 502, 503 or 504). This is a Magister server problem, not a problem in this Home Assistant integration.\n\nThe integration retries automatically. This issue clears when Magister provides data again."
+    },
     "fetch_failed": {
       "title": "Magister data unavailable: {name}",
       "description": "Magister could not fetch current data: {error}\n\nThe integration will retry automatically. If the problem persists, check your internet connection and whether you can log in to Magister. This issue clears once data is available again."

@@ -8,7 +8,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import AuthenticationRequired, MagisterAPI
+from .api import AuthenticationRequired, MagisterAPI, MagisterUnavailable
 from .const import DEFAULT_POLL_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -61,6 +61,19 @@ class MagisterDataUpdateCoordinator(DataUpdateCoordinator):
             ir.async_delete_issue(self.hass, DOMAIN, self._issue_id)
             _LOGGER.debug("Magister data succesvol opgehaald")
             return data
+        except MagisterUnavailable as err:
+            ir.async_create_issue(
+                self.hass,
+                DOMAIN,
+                self._issue_id,
+                is_fixable=False,
+                is_persistent=False,
+                severity=ir.IssueSeverity.WARNING,
+                translation_key="magister_unavailable",
+                translation_placeholders={"name": self._entry_title},
+            )
+            _LOGGER.warning("Magister is tijdelijk niet beschikbaar: %s", err)
+            raise UpdateFailed(str(err)) from err
         except AuthenticationRequired as err:
             _LOGGER.error("Authenticatie vereist voor Magister: %s", err)
             persistent_notification.async_create(

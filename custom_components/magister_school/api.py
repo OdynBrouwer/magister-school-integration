@@ -99,6 +99,7 @@ class MagisterAPI:
                 if err.returncode != 75:  # EX_TEMPFAIL: retry only script timeouts.
                     _LOGGER.error(
                         "Magister script error (exit %s): %s", err.returncode, stderr
+                        or "no stderr output; see /config/magister_error.log"
                     )
                     raise
                 lines = stderr.splitlines()

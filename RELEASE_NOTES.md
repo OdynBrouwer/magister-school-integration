@@ -1,3 +1,22 @@
+# Release v2.3.2b4 (beta)
+
+## GitHub release text
+
+Magister School Integration v2.3.2b4 handles Magister HTTP 429 rate-limit responses centrally. The retry uses the reset time reported by Magister, and incomplete/rate-limited study-guide fetches are not published as successful full data.
+
+### Fixes
+
+- Recognizes JSON 429 responses centrally.
+- Honors `secondsLeft` with a bounded retry delay of 1-300 seconds.
+- Prevents partial/rate-limited study-guide data from replacing the last successful data.
+- Keeps the existing temporary 502/503/504 outage handling.
+
+### HACS update text
+
+Beta fix for Magister rate limits: HTTP 429 responses wait for the reported reset time and avoid publishing incomplete study-guide data.
+
+## Previous release: v2.3.2b3
+
 # Release v2.3.2b3 (beta)
 
 ## GitHub release text

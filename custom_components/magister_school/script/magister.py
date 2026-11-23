@@ -314,6 +314,20 @@ class Magister:
             raise TimeoutError(f"Magister server returned HTTP {status}")
         if "application/json" in ctype:
             js = json.loads(raw)
+            if (
+                isinstance(js, dict)
+                and (
+                    js.get("message") == "Rate limit reached"
+                    or "rate limit" in str(js.get("message", "")).lower()
+                )
+            ):
+                seconds = js.get("secondsLeft")
+                if not isinstance(seconds, (int, float)):
+                    seconds = 17
+                seconds = max(1, min(int(seconds), 300))
+                raise TimeoutError(
+                    f"Magister rate limit reached; retry in {seconds}s"
+                )
             # alleen loggen als debug én niet json-uitvoer
             if getattr(self.args, "debug", False) and not getattr(self.args, "json", False):
                 self.logprint(js)

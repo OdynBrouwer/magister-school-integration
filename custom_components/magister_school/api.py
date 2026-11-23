@@ -128,5 +128,9 @@ class MagisterAPI:
                         "Dit is een storing bij Magister/Trevianum, niet bij de Home Assistant-integratie."
                     ) from None
                 raise TimeoutError(error) from None
-            _LOGGER.debug("%s; retrying once in 2 seconds", error)
-            time.sleep(2)
+            retry_seconds = 2
+            rate_limit_match = re.search(r"retry in (\d+)s", error)
+            if rate_limit_match:
+                retry_seconds = max(1, min(int(rate_limit_match.group(1)), 300))
+            _LOGGER.debug("%s; retrying once in %s seconds", error, retry_seconds)
+            time.sleep(retry_seconds)

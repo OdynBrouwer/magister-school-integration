@@ -66,6 +66,47 @@ def test_fetch_retries_timeout_once(monkeypatch, failure, recovers):
     sleep.assert_called_once_with(2)
 
 
+def test_http429_is_returned_as_bounded_timeout(monkeypatch):
+    args = SimpleNamespace(
+        xsrftoken=None,
+        accesstoken="token",
+        magisterserver="example.invalid",
+        schoolserver="example.invalid",
+        debug=False,
+        json=True,
+    )
+    client = script.Magister(args)
+    response = script.urllib.error.HTTPError(
+        "https://example.invalid/api/leerlingen/1/studiewijzers",
+        429,
+        "Too Many Requests",
+        {"content-type": "application/json"},
+        io.BytesIO(b'{"message":"Rate limit reached","secondsLeft":17}'),
+    )
+    client.opener.open = Mock(side_effect=response)
+
+    with pytest.raises(TimeoutError, match="retry in 17s"):
+        client.httpreq("https://example.invalid/api/leerlingen/1/studiewijzers")
+
+
+def test_rate_limit_wait_honors_reset_seconds(monkeypatch):
+    failure = subprocess.CalledProcessError(
+        75,
+        "python3",
+        stderr="Magister rate limit reached; retry in 17s\n",
+    )
+    result = SimpleNamespace(stdout=json.dumps({"kinderen": {"student": {}}}))
+    run = Mock(side_effect=[failure, result])
+    sleep = Mock()
+    monkeypatch.setattr(api.subprocess, "run", run)
+    monkeypatch.setattr(api.time, "sleep", sleep)
+    client = api.MagisterAPI("school", "user", "password")
+
+    assert client.get_data() == {"kinderen": {"student": {}}}
+    assert run.call_count == 2
+    sleep.assert_called_once_with(17)
+
+
 @pytest.mark.parametrize("status", ["502", "503", "504"])
 def test_temporary_server_status_maps_to_magister_unavailable(monkeypatch, status):
     failure = subprocess.CalledProcessError(

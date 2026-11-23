@@ -6,6 +6,7 @@ Magister School Integration v2.3.2b0 fixes failed API refreshes after a Magister
 
 ### Fixes
 
+- **2FA passkey promo (#46)**: Magister's passkey-proposal step is now skipped after both the password step and the 2FA soft-token step.
 - Cached access tokens are invalidated and refreshed once after `/api/account` rejects them.
 - HTTP 401/403 responses are reported as authorization failures.
 - HTTP 5xx responses are reported as Magister server failures.

@@ -53,6 +53,10 @@
     }
   },
   "issues": {
+    "magister_unavailable": {
+      "title": "Magister is tijdelijk niet beschikbaar: {name}",
+      "description": "Magister of Trevianum meldt momenteel een tijdelijke storing (HTTP 502, 503 of 504). Dit probleem zit bij Magister en niet bij deze Home Assistant-integratie.\n\nDe integratie probeert het automatisch opnieuw. De melding verdwijnt zodra Magister weer data levert."
+    },
     "fetch_failed": {
       "title": "Magister-data niet beschikbaar: {name}",
       "description": "Magister kon geen actuele data ophalen: {error}\n\nDe integratie probeert het automatisch opnieuw. Controleer bij aanhoudende problemen je internetverbinding en of je kunt inloggen bij Magister. Deze melding verdwijnt zodra er weer data beschikbaar is."

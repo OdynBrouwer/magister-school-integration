@@ -43,6 +43,9 @@ def normalize_school(value: str | None) -> str | None:
 class AuthenticationRequired(Exception):
     """Raised when Magister requires re-authentication (invalid password / 2FA)."""
 
+class MagisterUnavailable(Exception):
+    """Raised when Magister temporarily reports HTTP 502, 503 or 504."""
+
 class MagisterAPI:
     def __init__(self, school, user, password, totp_secret: str = None, days_back: int = 0, days_forward: int = 14, history_file: str = None):
         self.school = normalize_school(school) or school
@@ -118,6 +121,12 @@ class MagisterAPI:
                 return data
 
             if attempt:
+                if re.search(r"HTTP (502|503|504)", error):
+                    status = re.search(r"HTTP (502|503|504)", error).group(1)
+                    raise MagisterUnavailable(
+                        f"Magister is tijdelijk niet beschikbaar (HTTP {status}). "
+                        "Dit is een storing bij Magister/Trevianum, niet bij de Home Assistant-integratie."
+                    ) from None
                 raise TimeoutError(error) from None
             _LOGGER.debug("%s; retrying once in 2 seconds", error)
             time.sleep(2)

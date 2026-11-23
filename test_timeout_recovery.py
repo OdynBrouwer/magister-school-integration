@@ -66,6 +66,27 @@ def test_fetch_retries_timeout_once(monkeypatch, failure, recovers):
     sleep.assert_called_once_with(2)
 
 
+@pytest.mark.parametrize("status", ["502", "503", "504"])
+def test_temporary_server_status_maps_to_magister_unavailable(monkeypatch, status):
+    failure = subprocess.CalledProcessError(
+        75,
+        "python3",
+        stderr=f"Magister server returned HTTP {status}\n",
+    )
+    run = Mock(side_effect=[failure, failure])
+    sleep = Mock()
+    monkeypatch.setattr(api.subprocess, "run", run)
+    monkeypatch.setattr(api.time, "sleep", sleep)
+    client = api.MagisterAPI("school", "user", "password")
+
+    with pytest.raises(api.MagisterUnavailable, match=f"HTTP {status}") as caught:
+        client.get_data()
+
+    assert "niet bij de Home Assistant-integratie" in str(caught.value)
+    assert run.call_count == 2
+    sleep.assert_called_once_with(2)
+
+
 @pytest.mark.parametrize("result", [
     subprocess.CalledProcessError(1, "python3"),
     subprocess.CalledProcessError(2, "python3"),  # argparse failure, not a timeout
@@ -205,11 +226,42 @@ def test_issue_is_created_on_failure_and_cleared_on_recovery(coordinator_module,
     module.ir.async_delete_issue.assert_called_once_with(hass, "magister_school", "fetch_failed_account-1")
 
 
+def test_temporary_magister_outage_has_dedicated_warning_and_clears(coordinator_module):
+    module = coordinator_module
+    entry = SimpleNamespace(entry_id="account-1", title="Magister", async_on_unload=Mock())
+    outage = module.MagisterUnavailable(
+        "Magister is tijdelijk niet beschikbaar (HTTP 503). "
+        "Dit is een storing bij Magister/Trevianum."
+    )
+    data = {"kinderen": {"student": {}}}
+    hass = SimpleNamespace(async_add_executor_job=AsyncMock(side_effect=[outage, data]))
+    coordinator = module.MagisterDataUpdateCoordinator(
+        hass, entry, "school", "user", "password"
+    )
+
+    with pytest.raises(module.UpdateFailed, match="tijdelijk niet beschikbaar"):
+        asyncio.run(coordinator._async_update_data())
+
+    call = module.ir.async_create_issue.call_args
+    assert call.args == (hass, "magister_school", "fetch_failed_account-1")
+    assert call.kwargs["severity"] == module.ir.IssueSeverity.WARNING
+    assert call.kwargs["translation_key"] == "magister_unavailable"
+    module.ir.async_delete_issue.assert_not_called()
+
+    assert asyncio.run(coordinator._async_update_data()) == data
+    module.ir.async_delete_issue.assert_called_once_with(
+        hass, "magister_school", "fetch_failed_account-1"
+    )
+
+
 def test_issue_translations_are_complete():
     for path in (ROOT / "strings.json", *sorted((ROOT / "translations").glob("*.json"))):
-        issue = json.loads(path.read_text())["issues"]["fetch_failed"]
-        assert "{name}" in issue["title"]
-        assert "{error}" in issue["description"]
+        issues = json.loads(path.read_text())["issues"]
+        fetch_issue = issues["fetch_failed"]
+        assert "{name}" in fetch_issue["title"]
+        assert "{error}" in fetch_issue["description"]
+        outage_issue = issues["magister_unavailable"]
+        assert "{name}" in outage_issue["title"]
 
 
 def test_recovery_does_not_clear_another_accounts_issue(coordinator_module):

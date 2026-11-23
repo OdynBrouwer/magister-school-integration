@@ -507,7 +507,7 @@ def test_http_authorization_and_server_errors_are_not_treated_as_json(status):
             client.httpreq("https://example.invalid/api/account")
         assert caught.value.code == 403
     else:
-        with pytest.raises(RuntimeError, match="HTTP 503"):
+        with pytest.raises(TimeoutError, match="HTTP 503"):
             client.httpreq("https://example.invalid/api/account")
 
 

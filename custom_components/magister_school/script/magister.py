@@ -310,8 +310,8 @@ class Magister:
             raise urllib.error.HTTPError(
                 url, status, "Magister authorization failed", response.headers, None
             )
-        if status is not None and status >= 500 and not is_json:
-            raise RuntimeError(f"Magister server returned HTTP {status}")
+        if status in (502, 503, 504) and not is_json:
+            raise TimeoutError(f"Magister server returned HTTP {status}")
         if "application/json" in ctype:
             js = json.loads(raw)
             # alleen loggen als debug én niet json-uitvoer

@@ -1,3 +1,20 @@
+# Release v2.3.2b2 (beta)
+
+## GitHub release text
+
+Magister School Integration v2.3.2b2 treats Magister HTTP 502, 503 and 504 responses as temporary server failures instead of permanent setup or account failures.
+
+### Fixes
+
+- Temporary Magister server failures use the existing two-attempt retry flow.
+- HTTP 503 no longer immediately marks the integration setup as failed.
+
+### HACS update text
+
+Beta fix for Magister temporary 502/503/504 responses: retries the Magister fetch instead of treating it as a permanent account failure.
+
+## Previous release: v2.3.2b1
+
 # Release v2.3.2b1 (beta)
 
 ## GitHub release text

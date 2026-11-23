@@ -1,3 +1,22 @@
+# Release v2.3.2b0 (beta)
+
+## GitHub release text
+
+Magister School Integration v2.3.2b0 fixes failed API refreshes after a Magister session token expires. A stale cached token is removed once, the integration logs in again, and the account API is retried automatically.
+
+### Fixes
+
+- Cached access tokens are invalidated and refreshed once after `/api/account` rejects them.
+- HTTP 401/403 responses are reported as authorization failures.
+- HTTP 5xx responses are reported as Magister server failures.
+- Non-JSON authorization and server responses no longer get confused with normal API data.
+
+### HACS update text
+
+Beta fix for failed Magister API refreshes after an expired session token: the stale cache is refreshed once and the account request is retried.
+
+## Previous release: v2.3.1
+
 # Release v2.3.1
 
 ## GitHub release text

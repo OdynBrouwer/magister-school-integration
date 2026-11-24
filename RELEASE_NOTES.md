@@ -1,6 +1,26 @@
-# Release v2.3.3b0 (beta)
+# Release v2.3.3b1 (beta)
 
 ## GitHub release text
+
+Magister School Integration v2.3.3b1 ruimt alle statische typefouten op die Pylance in de code aangaf. Er verandert niets aan het gedrag; de bestanden zijn type-schoon.
+
+### Opgelost
+
+- `import urllib.error` toegevoegd; `urllib.error` werd alleen indirect via `urllib.request` geladen, waardoor Pylance het submodule niet zag.
+- `handlers` in de HTTP-opener is nu getypeerd als `list[urllib.request.BaseHandler]`.
+- `httpreq()`, `httpredirurl()` en `_read_response()` hebben expliciete return-types.
+- De hergebruikte variabele `d` in de loginflow is gesplitst; de URL-fragment-parameters heten nu `fragments`.
+- `store_access_token()` en `invalidate_access_token()` accepteren `str | Path`.
+- `totp_secret` en `history_file` zijn expliciet `str | None` in plaats van impliciet optionaal.
+- De 503-detectie gebruikt nu één `re.search`-resultaat in plaats van twee losse aanroepen.
+
+### HACS update text
+
+Beta: codeopruiming zonder gedragswijziging — alle Pylance-typefouten in het Magister-script en de integratie zijn opgelost.
+
+## Previous release: v2.3.3b0
+
+# Release v2.3.3b0 (beta)
 
 Magister School Integration v2.3.3b0 herkent het antwoord dat Magister geeft bij een verlopen of geweigerd sessietoken nu correct als "sessie verlopen", in plaats van als een kapot account.
 

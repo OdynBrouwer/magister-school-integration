@@ -24,6 +24,7 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------
 import re
+import urllib.error
 import urllib.request
 import urllib.parse
 import http.cookiejar
@@ -40,6 +41,7 @@ import time as time_mod
 from pathlib import Path
 import argparse
 from concurrent.futures import ThreadPoolExecutor
+from typing import Any
 
 EXIT_AUTH_FAILED = 77
 AUTH_FAILED_MARKER = "AUTHENTICATION_FAILED"
@@ -243,7 +245,9 @@ class Magister:
         self.magisterserver = args.magisterserver
         self.schoolserver = args.schoolserver
         self.cj = http.cookiejar.CookieJar()
-        handlers = [urllib.request.HTTPCookieProcessor(self.cj)]
+        handlers: list[urllib.request.BaseHandler] = [
+            urllib.request.HTTPCookieProcessor(self.cj)
+        ]
         if args.debug:
             handlers.append(urllib.request.HTTPSHandler(debuglevel=1))
         self.opener = urllib.request.build_opener(*handlers)
@@ -262,7 +266,7 @@ class Magister:
             safe_args.append(arg)
         print(*safe_args)
 
-    def _read_response(self, req, *, allow_http_error=False, **kwargs):
+    def _read_response(self, req, *, allow_http_error: bool = False, **kwargs) -> tuple[Any, bytes]:
         started = time_mod.monotonic()
         try:
             try:
@@ -283,7 +287,7 @@ class Magister:
             raise TimeoutError(f"Magister request to {host} timed out after {elapsed:.1f}s") from None
         return response, raw
 
-    def httpreq(self, url, data=None):
+    def httpreq(self, url: str, data=None) -> Any:
         """
         Generic http request function.
         Does a http-POST when the 'data' argument is present.
@@ -351,7 +355,7 @@ class Magister:
             if c.name == "XSRF-TOKEN":
                 return c.value
 
-    def httpredirurl(self, url, data=None):
+    def httpredirurl(self, url: str, data=None) -> tuple[str, bytes]:
         """
         request 'url', obtaining both the final result, and final redirected-to URL.
         """
@@ -470,7 +474,7 @@ class Magister:
         self.logprint()
 
         self.logprint("\n---- current ----")
-        d = dict(
+        d: dict[str, Any] = dict(
             sessionId= sessioninfo["sessionId"][0],
             returnUrl= sessioninfo["returnUrl"][0],
             authCode= authcode,
@@ -551,8 +555,8 @@ class Magister:
             return False
         _, qs = url.split('#', 1)
 
-        d = urllib.parse.parse_qs(qs)
-        self.access_token = d["access_token"][0]
+        fragments = urllib.parse.parse_qs(qs)
+        self.access_token = fragments["access_token"][0]
         if self.args.verbose and not getattr(self.args, "json", False):
             print(f" -> access = {self.access_token}")
 
@@ -639,7 +643,7 @@ def apply_auth_config(cfg, args):
         return
     args.accesstoken = cfg.get('root', 'accesstoken')
 
-def store_access_token(cache: str, token: str) -> None:
+def store_access_token(cache: str | Path, token: str) -> None:
     import base64
     import json
     from datetime import datetime, timezone, timedelta
@@ -671,7 +675,7 @@ def store_access_token(cache: str, token: str) -> None:
         print(f"expires={exp:%Y-%m-%dT%H:%M:%SZ}", file=fh)
         print(f"accesstoken={token}", file=fh)
 
-def invalidate_access_token(cache: str) -> None:
+def invalidate_access_token(cache: str | Path) -> None:
     """Remove a cached access token after it is rejected by Magister."""
     try:
         Path(cache).unlink()

@@ -47,7 +47,7 @@ class MagisterUnavailable(Exception):
     """Raised when Magister temporarily reports HTTP 502, 503 or 504."""
 
 class MagisterAPI:
-    def __init__(self, school, user, password, totp_secret: str = None, days_back: int = 0, days_forward: int = 14, history_file: str = None):
+    def __init__(self, school, user, password, totp_secret: str | None = None, days_back: int = 0, days_forward: int = 14, history_file: str | None = None):
         self.school = normalize_school(school) or school
         self.user = user
         self.password = password
@@ -121,10 +121,10 @@ class MagisterAPI:
                 return data
 
             if attempt:
-                if re.search(r"HTTP (502|503|504)", error):
-                    status = re.search(r"HTTP (502|503|504)", error).group(1)
+                status_match = re.search(r"HTTP (502|503|504)", error)
+                if status_match:
                     raise MagisterUnavailable(
-                        f"Magister is tijdelijk niet beschikbaar (HTTP {status}). "
+                        f"Magister is tijdelijk niet beschikbaar (HTTP {status_match.group(1)}). "
                         "Dit is een storing bij Magister/Trevianum, niet bij de Home Assistant-integratie."
                     ) from None
                 raise TimeoutError(error) from None

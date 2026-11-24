@@ -534,8 +534,8 @@ class Magister:
 
             self.logprint("\n---- select user ----")
             self.logprint(
-                "accounts:", [u.get("username") for u in users],
-                "->", chosen.get("username"),
+                "accounts:", [u.get("username") or "?" for u in users],
+                "->", chosen.get("username") or "?",
             )
             payload = {
                 "sessionId": d["sessionId"],

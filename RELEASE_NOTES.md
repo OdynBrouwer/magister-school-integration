@@ -1,3 +1,30 @@
+# Release v2.3.2
+
+## GitHub release text
+
+Magister School Integration v2.3.2 bundelt alle fixes uit de bètareeks: de 2FA-passkeypromo wordt nu ook na de soft-tokenstap overgeslagen, een verlopen sessietoken wordt eenmalig vernieuwd, een tijdelijke Magister-storing is duidelijk zichtbaar als melding, rate limits worden gerespecteerd, en de meegeleverde kaart krijgt instelbare hoogtes plus een correcte cache-versie.
+
+### Nieuw: blueprints
+
+De repository bevat nu twee blueprints: een meldingsblueprint (lesuitval, huiswerk, cijfers, absenties, roosterwijzigingen) en een dagelijks overzicht. Beide werken per kind en melden alleen nieuwe items.
+
+### Opgelost
+
+- **2FA-passkeypromo na de soft-tokenstap (#46)** — Magister kan de passkeypromo ook na de 2FA-stap tonen; die wordt nu op beide plekken overgeslagen.
+- **Verlopen sessietoken** — een gecachet token dat door `/api/account` wordt geweigerd, wordt eenmalig verwijderd, waarna opnieuw wordt ingelogd en de aanvraag opnieuw wordt gedaan.
+- **Duidelijke storingsmelding** — HTTP 502/503/504 verschijnt als reparatiemelding "Magister is tijdelijk niet beschikbaar", met de uitleg dat het bij Magister/Trevianum zit en niet bij de integratie. De melding verdwijnt zodra er weer data is.
+- **Rate limits (#51)** — JSON-429-antwoorden worden centraal herkend; de retry wacht op `secondsLeft` (1-300 s) en gedeeltelijke studiewijzerdata wordt niet meer als volledige fetch gepubliceerd.
+- **Meerdere accounts (#50)** — de registratie van de meegeleverde kaart is geserialiseerd, zodat een tweede configuratie-entry niet meer stukloopt op een dubbele route.
+- **Widgethoogte (#49)** — de kaart ondersteunt `widget_height` en `widget_heights`, inclusief `auto` voor volledige hoogte zonder interne scrollbar.
+- **Kaartcache** — een bestaande Lovelace-resource wordt bijgewerkt naar de actuele versie in plaats van een oude `?v=`-URL te houden.
+- **Foutdiagnostiek** — onverwachte scriptfouten komen nu ook in het Home Assistant-log, niet alleen in `/config/magister_error.log`.
+
+### HACS update text
+
+Stabiele release met alle bètafixes: 2FA-passkeypromo na de soft-tokenstap, herstel van verlopen sessies, duidelijke Magister-storingsmelding, rate-limit-afhandeling, multi-account-kaartfix, instelbare widgethoogtes en correcte kaartcache-versie. Inclusief twee blueprints.
+
+## Previous release: v2.3.2b6
+
 # Release v2.3.2b6 (beta)
 
 ## GitHub release text

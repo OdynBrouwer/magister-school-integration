@@ -20,6 +20,19 @@ Integreer Magister schoolinformatie direct in je Home Assistant dashboard. Toon 
 - **🚫 Uitval & Wijzigingen** - Vervallen lessen verschijnen ook in de roosterwijzigingen
 - **💾 Recorder-vriendelijk** - Omvangrijke attributen automatisch uitgesloten van de recorder-historie
 
+## ✨ Nieuw in v2.3.2
+
+Stabiele release met alle fixes uit de bètareeks.
+
+- **2FA-passkeypromo na de soft-tokenstap (#46)** — Magister kan de passkeypromo ook ná de 2FA-stap tonen; die wordt nu op beide plekken overgeslagen.
+- **Verlopen sessie herstelt zichzelf** — een gecachet token dat wordt geweigerd, wordt eenmalig verwijderd waarna opnieuw wordt ingelogd en de aanvraag opnieuw wordt gedaan.
+- **Duidelijke storingsmelding** — HTTP 502/503/504 toont een reparatiemelding "Magister is tijdelijk niet beschikbaar" en verdwijnt vanzelf zodra Magister weer data levert.
+- **Rate limits (#51)** — HTTP 429 wordt herkend, de retry wacht op `secondsLeft` (1-300 s) en er wordt geen gedeeltelijke studiewijzerdata gepubliceerd.
+- **Meerdere accounts (#50)** — de registratie van de meegeleverde kaart is geserialiseerd; een tweede configuratie-entry faalt niet meer op een dubbele route.
+- **Widgethoogte (#49)** — `widget_height` en `widget_heights` op de kaart, inclusief `auto` voor volledige hoogte zonder interne scrollbar.
+- **Kaartcache** — een bestaande Lovelace-resource wordt bijgewerkt naar de actuele `?v=`-versie.
+- **Blueprints** — meldingen bij lesuitval, huiswerk, cijfers, absenties en roosterwijzigingen, plus een dagelijks overzicht. Zie [blueprints/README.md](blueprints/README.md).
+
 ## ✨ Nieuw in v2.3.1
 
 - **`categorie` op elke afspraak** — `les`, `afspraak` of `boeking`. Magister gebruikt `Algemeen` voor twee verschillende dingen: een echte afspraak (nulmeting, mentorgesprek — altijd met vak of docent) en een lokaal-/groepsboeking ("Studie na school", avondblokken als "10 leerlingen" — zonder vak en docent). Filter erop in templates of met `hide_boekingen` in de kaart.

@@ -568,6 +568,166 @@ def test_invalidate_access_token_removes_only_cache_file(tmp_path):
     assert not cache.exists()
 
 
+class TestLoginChallenges:
+    """Extra challenges Magister can return before the final redirect.
+
+    Taken from the account login bundle: ``userselector`` sends
+    ``{action: userselector, users: [{id, username}], tenantname}`` and expects
+    ``{action: select-user, userId}``.
+    """
+
+    BASE = {
+        "/.well-known/openid-configuration": {
+            "authorization_endpoint": "https://accounts.magister.net/connect/authorize"
+        },
+        "/oidc_config.js": b"oidc",
+        "/js/account.js": b"account",
+        "/challenges/current": {},
+        "/challenges/username": {},
+    }
+
+    def _client(self, monkeypatch, responses, username="ouder"):
+        calls = []
+
+        def fake_httpreq(mg, url, data=None):
+            calls.append((url, data))
+            for suffix, value in responses.items():
+                if url.endswith(suffix):
+                    return value
+            raise AssertionError(f"unexpected request: {url}")
+
+        def fake_redir(mg, url, data=None):
+            if "/connect/authorize" in url:
+                return (
+                    "https://accounts.magister.net/account/login"
+                    "?sessionId=sess-1&returnUrl=%2Foidc%2Fcb",
+                    b"<html/>",
+                )
+            return ("https://accounts.magister.net/oidc/cb#access_token=token-123", b"")
+
+        args = SimpleNamespace(
+            xsrftoken=None,
+            accesstoken=None,
+            debug=False,
+            json=True,
+            verbose=False,
+            magisterserver="accounts.magister.net",
+            schoolserver="trevianum.magister.net",
+            authcode="0" * 32,
+            totp_secret=None,
+            username=username,
+        )
+        client = magister.Magister(args)
+        monkeypatch.setattr(magister.Magister, "httpreq", fake_httpreq)
+        monkeypatch.setattr(magister.Magister, "httpredirurl", fake_redir)
+        monkeypatch.setattr(magister.Magister, "extract_oidc_config", lambda self, js: {
+            "client_id": "cid",
+            "redirect_uri": "https://example.invalid/oidc/redirect_callback.html",
+            "response_type": "id_token token",
+            "acr_values": "tenant:trevianum.magister.net",
+        })
+        monkeypatch.setattr(
+            magister.Magister, "extract_account_url",
+            lambda self, html: "https://accounts.magister.net/js/account.js",
+        )
+        monkeypatch.setattr(
+            magister.Magister, "extract_authcode", lambda self, js: "auth-code",
+        )
+        return client, calls
+
+    @staticmethod
+    def _payload(calls, endpoint):
+        found = [data for url, data in calls if url.endswith(endpoint)]
+        assert len(found) == 1
+        return json.loads(found[0])
+
+    def test_userselector_picks_the_matching_username(self, monkeypatch):
+        responses = dict(self.BASE)
+        responses["/challenges/password"] = {
+            "action": "userselector",
+            "tenantname": "Trevianum",
+            "users": [
+                {"id": 11, "username": "kind"},
+                {"id": 42, "username": "ouder"},
+            ],
+        }
+        responses["/challenges/select-user"] = {"redirectURL": "/oidc/cb"}
+
+        client, calls = self._client(monkeypatch, responses, username="ouder")
+
+        assert client.login("ouder", "geheim") is True
+        payload = self._payload(calls, "/challenges/select-user")
+        assert payload["userId"] == 42
+        assert payload["sessionId"] == "sess-1"
+        assert "password" not in payload
+
+    def test_userselector_falls_back_to_the_first_user(self, monkeypatch):
+        responses = dict(self.BASE)
+        responses["/challenges/password"] = {
+            "action": "userselector",
+            "users": [{"id": 7, "username": "eerste"}, {"id": 8, "username": "tweede"}],
+        }
+        responses["/challenges/select-user"] = {"redirectURL": "/oidc/cb"}
+
+        client, calls = self._client(monkeypatch, responses, username="onbekend")
+
+        assert client.login("onbekend", "geheim") is True
+        assert self._payload(calls, "/challenges/select-user")["userId"] == 7
+
+    def test_userselector_without_users_fails_cleanly(self, monkeypatch, capsys):
+        responses = dict(self.BASE)
+        responses["/challenges/password"] = {"action": "userselector", "users": []}
+
+        client, calls = self._client(monkeypatch, responses)
+
+        assert client.login("ouder", "geheim") is False
+        assert not [url for url, _ in calls if url.endswith("/challenges/select-user")]
+        assert "no user list" in capsys.readouterr().err
+
+    def test_password_challenge_skips_the_fido_promo_up_front(self, monkeypatch):
+        responses = dict(self.BASE)
+        responses["/challenges/password"] = {"redirectURL": "/oidc/cb"}
+
+        client, calls = self._client(monkeypatch, responses)
+
+        assert client.login("ouder", "geheim") is True
+        payload = self._payload(calls, "/challenges/password")
+        assert payload["userSkippedFido"] is True
+        assert payload["userWantsToPairSoftToken"] is False
+        assert payload["password"] == "geheim"
+
+    def test_userselector_after_the_soft_token_step(self, monkeypatch):
+        responses = dict(self.BASE)
+        responses["/challenges/password"] = {"action": "soft-token"}
+        responses["/challenges/soft-token"] = {
+            "action": "userselector",
+            "users": [{"id": 5, "username": "kind"}],
+        }
+        responses["/challenges/select-user"] = {"redirectURL": "/oidc/cb"}
+
+        client, calls = self._client(monkeypatch, responses)
+        client.args.totp_secret = "JBSWY3DPEHPK3PXP"
+
+        assert client.login("ouder", "geheim") is True
+        assert self._payload(calls, "/challenges/select-user")["userId"] == 5
+        token_payload = self._payload(calls, "/challenges/soft-token")
+        assert token_payload["Code"].isdigit()
+
+    def test_userselector_before_the_password_step(self, monkeypatch):
+        responses = dict(self.BASE)
+        responses["/challenges/username"] = {
+            "action": "userselector",
+            "users": [{"id": 3, "username": "ouder"}],
+        }
+        responses["/challenges/select-user"] = {}
+        responses["/challenges/password"] = {"redirectURL": "/oidc/cb"}
+
+        client, calls = self._client(monkeypatch, responses)
+
+        assert client.login("ouder", "geheim") is True
+        assert self._payload(calls, "/challenges/select-user")["userId"] == 3
+
+
 def test_cached_account_failure_relogs_once_and_retries_account():
     with open(script_path, encoding="utf-8") as f:
         content = f.read()

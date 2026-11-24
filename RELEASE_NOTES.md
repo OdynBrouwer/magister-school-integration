@@ -1,6 +1,26 @@
-# Release v2.3.3b1 (beta)
+# Release v2.3.3b2 (beta)
 
 ## GitHub release text
+
+Magister School Integration v2.3.3b2 ondersteunt alle aanmeldstappen die Magister tijdens het inloggen kan terugsturen.
+
+### Nieuw
+
+- **Accountkeuze (`userselector`)** — als één login aan meerdere gebruikers is gekoppeld, kiest de integratie automatisch het account dat bij de ingevoerde gebruikersnaam hoort (anders het eerste). Voorheen stopte de login met `Unhandled login action: 'userselector'`.
+- **Passkey-promo voorkómen** — bij de wachtwoordstap worden nu `userSkippedFido` en `userWantsToPairSoftToken` meegestuurd, zoals de Magister-webapp doet. De promo wordt daarmee in één keer overgeslagen in plaats van achteraf.
+- **Meerdere tussenstappen** — promo en accountkeuze worden herhaald afgehandeld, ook ná de 2FA-stap.
+
+### Documentatie
+
+- README heeft een sectie **Aanmeldmethoden** met wat wel en niet kan (wachtwoord, TOTP, accountkeuze vs. passkey, hardwaretoken, herstelcode en SSO).
+
+### HACS update text
+
+Beta: ondersteuning voor Magister's accountkeuze bij meerdere gebruikers, passkey-promo wordt direct overgeslagen, en de README documenteert welke aanmeldmethoden werken.
+
+## Previous release: v2.3.3b1
+
+# Release v2.3.3b1 (beta)
 
 Magister School Integration v2.3.3b1 ruimt alle statische typefouten op die Pylance in de code aangaf. Er verandert niets aan het gedrag; de bestanden zijn type-schoon.
 

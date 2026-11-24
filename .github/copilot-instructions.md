@@ -12,9 +12,11 @@
 - Use GitHub CLI (`gh`) for repository, issue, pull-request, tag and release operations.
 - The GitHub account is `OdynBrouwer`.
 - Use `main` as the normal target branch.
-- Regular public fixes use beta versions by default.
+- **Every change is published as a beta first.** Always bump to the next `vX.Y.ZbN` and create a prerelease.
+- Never publish a stable release unless the user explicitly asks for "volledige versie" / "stable".
 - Use the convention `v2.3.2bN` with a matching manifest `2.3.2bN`.
 - Create prereleases with `gh release create <tag> --prerelease --target main`.
+- When the user asks to remove older betas, delete the release **and** its tag: `gh release delete <tag> --yes --cleanup-tag`.
 
 ## Card releases
 

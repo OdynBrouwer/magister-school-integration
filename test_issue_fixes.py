@@ -460,6 +460,52 @@ def test_expired_session_is_not_hidden(magister_refresh, endpoint):
         magister_refresh({endpoint: b"SecurityToken Expired"})
 
 
+@pytest.mark.parametrize("response", [
+    b"SecurityToken Expired",
+    "SecurityToken Expired",
+    "Invalid Operation",
+    "invalid operation",
+    "  Invalid Operation  ",
+])
+def test_rejected_token_is_reported_as_expired_session(magister_refresh, response):
+    """Magister answers a bad bearer token with HTTP 400 + JSON string.
+
+    Live check: GET /api/account with an invalid token returns 400 and the
+    body ``"Invalid Operation"``; ``httpreq`` turns that into the plain string
+    ``Invalid Operation``. That must count as an expired session so the
+    integration re-authenticates instead of reporting a broken account.
+    """
+    with pytest.raises(RuntimeError, match="Magister session expired"):
+        magister_refresh({"/account": response})
+
+
+def test_httpreq_decodes_invalid_operation_body_to_plain_string():
+    """The 400 + application/json body is a JSON string, not a JSON object."""
+    from unittest.mock import Mock
+
+    response = Mock()
+    response.status = 400
+    response.code = 400
+    response.headers = {"content-type": "application/json"}
+    response.read.return_value = b'"Invalid Operation"'
+    response.__enter__ = Mock(return_value=response)
+    response.__exit__ = Mock(return_value=False)
+
+    client = magister.Magister(SimpleNamespace(
+        xsrftoken=None,
+        accesstoken="expired-token",
+        debug=False,
+        json=True,
+        magisterserver="example.invalid",
+        schoolserver="example.invalid",
+    ))
+    client.opener.open = Mock(return_value=response)
+
+    assert client.httpreq("https://example.invalid/api/account") == "Invalid Operation"
+    with pytest.raises(RuntimeError, match="Magister session expired"):
+        client.req("account")
+
+
 def test_student_account_permission_response_is_still_supported(magister_refresh):
     data = magister_refresh({"/account": {"Persoon": {"Id": 1, "Roepnaam": "Student"}},
                              "/kinderen": {"Fouttype": "OnvoldoendePrivileges"}})

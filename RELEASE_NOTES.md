@@ -1,6 +1,26 @@
-# Release v2.3.2
+# Release v2.3.3b0 (beta)
 
 ## GitHub release text
+
+Magister School Integration v2.3.3b0 herkent het antwoord dat Magister geeft bij een verlopen of geweigerd sessietoken nu correct als "sessie verlopen", in plaats van als een kapot account.
+
+### Aanleiding
+
+Een live controle van de Magister-API liet zien dat `GET /api/account` met een ongeldig token antwoordt met **HTTP 400** en de body `"Invalid Operation"`. De integratie behandelde dat als "geen JSON-antwoord", waarna de melding *"account response has no valid person ID"* verscheen. Dat is precies de verwarrende melding die tijdens de storing van 23/24 november als eerste in het log stond.
+
+### Opgelost
+
+- Zowel `SecurityToken Expired` als `Invalid Operation` (bytes en string, hoofdletterongevoelig) geldt nu als verlopen sessie.
+- Daardoor wordt meteen het bestaande herstelpad gebruikt: token weggooien, opnieuw inloggen en de aanvraag herhalen.
+- Het log noemt de juiste oorzaak in plaats van een misleidende accountfout.
+
+### HACS update text
+
+Beta: herkent Magister's `"Invalid Operation"`-antwoord (HTTP 400) als verlopen sessie, zodat de integratie opnieuw inlogt in plaats van een accountfout te melden.
+
+## Previous release: v2.3.2
+
+# Release v2.3.2
 
 Magister School Integration v2.3.2 bundelt alle fixes uit de bètareeks: de 2FA-passkeypromo wordt nu ook na de soft-tokenstap overgeslagen, een verlopen sessietoken wordt eenmalig vernieuwd, een tijdelijke Magister-storing is duidelijk zichtbaar als melding, rate limits worden gerespecteerd, en de meegeleverde kaart krijgt instelbare hoogtes plus een correcte cache-versie.
 

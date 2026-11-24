@@ -44,6 +44,10 @@ from concurrent.futures import ThreadPoolExecutor
 EXIT_AUTH_FAILED = 77
 AUTH_FAILED_MARKER = "AUTHENTICATION_FAILED"
 
+# Magister answers a rejected/expired bearer token with HTTP 400 and a bare
+# JSON string instead of a JSON object. Both spellings mean: log in again.
+SESSION_EXPIRED_RESPONSES = ("securitytoken expired", "invalid operation")
+
 
 def object_data(value):
     """Read optional nested objects without assuming null is a dictionary."""
@@ -577,10 +581,10 @@ class Magister:
         if self._raw_dump is not None:
             self._raw_dump.setdefault(path + qs, response)
 
-        if isinstance(response, (bytes, str)) and response.strip() in (
-            b"SecurityToken Expired", "SecurityToken Expired",
-        ):
-            raise RuntimeError("Magister session expired")
+        if isinstance(response, (bytes, str)):
+            text = response.decode("utf-8", "ignore") if isinstance(response, bytes) else response
+            if text.strip().lower() in SESSION_EXPIRED_RESPONSES:
+                raise RuntimeError("Magister session expired")
         if not isinstance(response, dict):
             print(f"! geen JSON-antwoord voor {'.'.join(tag)}", file=sys.stderr)
             return {}

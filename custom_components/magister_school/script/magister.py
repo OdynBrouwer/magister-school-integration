@@ -481,17 +481,6 @@ class Magister:
         )
         r = self.httpreq(f"https://{self.magisterserver}/challenges/current", json.dumps(d))
 
-        d["username"] = username
-
-        self.logprint("\n---- username ----")
-        r = self.httpreq(f"https://{self.magisterserver}/challenges/username", json.dumps(d))
-        if r.get('error'):
-            if not getattr(self.args, "json", False):
-                print("ERROR '%s'" % r['error'])
-            return False
-
-        d["password"] = password
-
         def skip_fido_promo(r):
             """Skip Magister's passkey promo ("pairfidopromo").
 
@@ -506,6 +495,89 @@ class Magister:
             d["userVerifyingPlatformAuthenticator"] = None
             return self.httpreq(f"https://{self.magisterserver}/challenges/skip-pair-fido-promo", json.dumps(d))
 
+        def select_user(r):
+            """Answer Magister's account selector.
+
+            One login can map to several users. Magister then returns
+            ``action: userselector`` with a ``users`` list of ``{id, username}``
+            entries and expects ``action: select-user`` with the chosen id.
+            """
+            if r.get('action') != 'userselector':
+                return r
+
+            users = [u for u in (r.get('users') or []) if isinstance(u, dict)]
+            wanted = str(getattr(self.args, "username", "") or "").strip().lower()
+            chosen = next(
+                (
+                    u for u in users
+                    if str(u.get("username", "")).strip().lower() == wanted
+                ),
+                None,
+            )
+            if chosen is None and users:
+                chosen = users[0]
+
+            if chosen is None:
+                print(
+                    "Magister asked to select an account, but returned no user list",
+                    file=sys.stderr,
+                )
+                return {"error": "userselector"}
+
+            user_id = chosen.get("id")
+            if user_id in (None, ""):
+                print(
+                    "Magister asked to select an account, but returned no account id",
+                    file=sys.stderr,
+                )
+                return {"error": "userselector"}
+
+            self.logprint("\n---- select user ----")
+            self.logprint(
+                "accounts:", [u.get("username") for u in users],
+                "->", chosen.get("username"),
+            )
+            payload = {
+                "sessionId": d["sessionId"],
+                "returnUrl": d["returnUrl"],
+                "authCode": d["authCode"],
+                "userId": user_id,
+            }
+            return self.httpreq(
+                f"https://{self.magisterserver}/challenges/select-user",
+                json.dumps(payload),
+            )
+
+        def resolve_challenges(r):
+            """Handle intermediate challenges until Magister continues the flow."""
+            for _ in range(6):
+                if not isinstance(r, dict):
+                    return r
+                action = r.get('action')
+                if action == 'pairfidopromo':
+                    r = skip_fido_promo(r)
+                elif action == 'userselector':
+                    r = select_user(r)
+                else:
+                    return r
+            return r
+
+        d["username"] = username
+
+        self.logprint("\n---- username ----")
+        r = self.httpreq(f"https://{self.magisterserver}/challenges/username", json.dumps(d))
+        if r.get('error'):
+            if not getattr(self.args, "json", False):
+                print("ERROR '%s'" % r['error'])
+            return False
+        r = resolve_challenges(r)
+
+        d["password"] = password
+        # The web app always sends these two flags. Asking to skip the passkey
+        # promo up front avoids an extra challenge round-trip.
+        d["userSkippedFido"] = True
+        d["userWantsToPairSoftToken"] = False
+
         self.logprint("\n---- password ----")
         r = self.httpreq(f"https://{self.magisterserver}/challenges/password", json.dumps(d))
 
@@ -513,7 +585,7 @@ class Magister:
         if r.get('action') == "changepassword":
             print("ERROR Magister wants you to change your password!!")
             return
-        r = skip_fido_promo(r)
+        r = resolve_challenges(r)
 
 
         if r.get('action') in ('soft-token', 'softtoken'):
@@ -527,7 +599,7 @@ class Magister:
             totp_code = generate_totp(totp_secret)
             d["Code"] = totp_code
             r = self.httpreq(f"https://{self.magisterserver}/challenges/soft-token", json.dumps(d))
-            r = skip_fido_promo(r)
+            r = resolve_challenges(r)
 
 
         if not r.get('redirectURL') or r.get('error'):

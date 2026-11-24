@@ -104,6 +104,32 @@ importknoppen, installatie en de optionele helpers.
    - **Wachtwoord**: Je Magister wachtwoord
    - **2FA/TOTP-secret** (optioneel): alleen nodig bij 2FA. Vul hier de **secret key** in (de lange base32-string uit je authenticator-app, bijv. via ProtonPass of Aegis), **niet** de 6-cijferige code zelf.
 
+### 🔐 Aanmeldmethoden
+
+Magister ondersteunt meerdere manieren van inloggen. De integratie leest de
+zogenoemde challenges uit die Magister tijdens het aanmelden terugstuurt. Dit is
+wat er wel en niet kan:
+
+| Methode | Werkt in de integratie |
+|---|---|
+| Gebruikersnaam + wachtwoord | ✅ |
+| Authenticator-app (TOTP/soft-token) | ✅ via het 2FA-secret |
+| Meerdere accounts onder één login (`userselector`) | ✅ kiest automatisch het account dat bij de gebruikersnaam hoort |
+| Passkey / wachtwoordsleutel (WebAuthn/FIDO2) | ❌ niet mogelijk |
+| Hardwaretoken (`hardtoken`) | ❌ vereist een mens die de code intoetst |
+| Herstelcode / wachtwoord resetten / account activeren | ❌ alleen interactief in de browser |
+| Inloggen via externe IdP (school-SSO) | ❌ niet ondersteund |
+
+**Waarom geen passkey?** Een wachtwoordsleutel is apparaatgebonden en vereist
+bewuste gebruikersaanwezigheid (vinger, gezicht of pincode). Dat is precies het
+beveiligingsdoel ervan, dus een achtergrondproces als Home Assistant kan die
+stap niet uitvoeren. Gebruik in dat geval het wachtwoord plus eventueel de
+authenticator-app; die combinatie werkt volledig geautomatiseerd.
+
+Als Magister een stap terugstuurt die de integratie niet kent, verschijnt in het
+log `Unhandled login action: '…'`. Meld dat met de naam erbij, dan kan
+ondersteuning worden toegevoegd.
+
 ### 👤 Student vs Ouder Accounts
 
 De integratie werkt met beide account types:

@@ -1,3 +1,26 @@
+# Release v2.4.0b0 (beta)
+
+## GitHub release text
+
+Magister School Integration v2.4.0b0 voegt twee nieuwe rubrieken toe: **berichten** en **mededelingen**. Dit is de eerste uitbreiding die uit de API-verkenning kwam — beide endpoints werken met een gewoon leerlingaccount.
+
+### Nieuw
+
+- **`sensor.magister_data_ongelezen_berichten`** — aantal ongelezen berichten over alle mappen. Attributen: `mappen` (per map de telling) en `laatste` (de vijf nieuwste berichten met onderwerp, afzender, datum, gelezen-status en of er bijlagen zijn).
+- **`sensor.magister_data_mededelingen`** — aantal mededelingen van school, met attribuut `laatste`.
+- Nieuwe API-calls in `magister.py`: `berichten` (hub), `berichten/mappen/alle`, `berichten/mappen/{id}/berichten` en `mededelingen`. Deze horen bij het account, niet bij een kind, dus de sensors zijn account-breed.
+- **8 tests** in `test_postvak.py` voor het samentellen van ongelezen, het sorteren op datum, het afkappen op vijf, afzender als object én als tekst, en het melden van ontbrekende collecties.
+
+### Privacy
+
+Alleen de **telling** komt in de recorder-historie. Onderwerp en afzender staan in attributen die via `_unrecorded_attributes` buiten de historie blijven. Ontbrekende of onverwachte velden leveren geen crash maar een lege waarde.
+
+### HACS update text
+
+Beta: nieuwe sensors voor ongelezen berichten en mededelingen, met de nieuwste berichten als attribuut. Alleen de telling wordt opgeslagen in de historie.
+
+## Previous release: v2.3.3b6
+
 # Release v2.3.3b6 (beta)
 
 ## GitHub release text

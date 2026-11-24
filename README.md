@@ -158,6 +158,38 @@ Na installatie worden de volgende sensors aangemaakt:
 ### Hoofd Sensor
 - `sensor.magister_data` - Laatste update-tijdstip van de integratie
 
+### Per Account Sensors
+Deze horen bij het Magister-account zelf, niet bij één kind:
+
+- `sensor.magister_data_ongelezen_berichten` - Aantal ongelezen berichten.
+  Attributen: `mappen` (per map de telling) en `laatste` (nieuwste 5 berichten
+  met `onderwerp`, `afzender`, `verzonden_op`, `is_gelezen`, `heeft_bijlagen`).
+- `sensor.magister_data_mededelingen` - Aantal mededelingen van school, met
+  attribuut `laatste` (zelfde velden, zonder gelezen-status).
+
+Alleen de **telling** komt in de recorder-historie; de inhoud (onderwerp,
+afzender) wordt via `_unrecorded_attributes` juist níet opgeslagen.
+
+Voorbeeld van een melding bij een nieuw bericht:
+
+```yaml
+automation:
+  - alias: "Melding bij nieuw Magister-bericht"
+    trigger:
+      - platform: state
+        entity_id: sensor.magister_data_ongelezen_berichten
+    condition:
+      - condition: template
+        value_template: "{{ trigger.to_state.state | int(0) > trigger.from_state.state | int(0) }}"
+    action:
+      - service: notify.mobile_app
+        data:
+          title: "Nieuw Magister-bericht"
+          message: >-
+            {{ state_attr('sensor.magister_data_ongelezen_berichten', 'laatste')[0].onderwerp }}
+            van {{ state_attr('sensor.magister_data_ongelezen_berichten', 'laatste')[0].afzender }}
+```
+
 ### Per Kind Sensors
 - `sensor.magister_[kind_naam]` - Compleet overzicht
 - `sensor.magister_[kind_naam]_afspraken_vandaag` - Aantal afspraken vandaag

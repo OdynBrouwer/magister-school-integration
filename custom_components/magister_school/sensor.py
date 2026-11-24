@@ -30,6 +30,8 @@ _UNRECORDED_ATTRS = frozenset({
     "open_opdrachten",
     "recente_absenties",
     "uitval",
+    "berichten",
+    "mededelingen",
 })
 
 async def async_setup_entry(
@@ -45,6 +47,7 @@ async def async_setup_entry(
         await coordinator.async_config_entry_first_refresh()
     
     sensors = [MagisterMainSensor(coordinator, DEFAULT_NAME)]
+    sensors.extend(create_account_sensors(coordinator, DEFAULT_NAME))
     
     # Create individuele sensors voor elk kind
     if coordinator.data and "kinderen" in coordinator.data:
@@ -356,6 +359,100 @@ class MagisterMainSensor(SensorEntity):
 
     async def async_added_to_hass(self):
         """When entity is added to hass."""
+        self.async_on_remove(
+            self._coordinator.async_add_listener(self.async_write_ha_state)
+        )
+
+
+def create_account_sensors(coordinator, name):
+    """Sensors die bij het Magister-account horen, niet bij één kind."""
+    return [
+        MagisterOngelezenBerichtenSensor(coordinator, name),
+        MagisterMededelingenSensor(coordinator, name),
+    ]
+
+
+class MagisterOngelezenBerichtenSensor(SensorEntity):
+    """Aantal ongelezen berichten met de nieuwste berichten als attribuut."""
+    _unrecorded_attributes = frozenset({"mappen", "laatste"})
+
+    def __init__(self, coordinator, name):
+        self._coordinator = coordinator
+        self._attr_unique_id = f"{coordinator.entry_id}_magister_ongelezen_berichten"
+        self._attr_name = f"{name} ongelezen berichten"
+        self._attr_icon = "mdi:email-alert-outline"
+
+    def _get_berichten(self):
+        data = self._coordinator.data or {}
+        berichten = data.get("berichten")
+        return berichten if isinstance(berichten, dict) else {}
+
+    @property
+    def state(self):
+        ongelezen = self._get_berichten().get("ongelezen")
+        return ongelezen if isinstance(ongelezen, int) else 0
+
+    @property
+    def extra_state_attributes(self):
+        berichten = self._get_berichten()
+        return {
+            "mappen": berichten.get("mappen", []),
+            "laatste": berichten.get("laatste", []),
+        }
+
+    @property
+    def should_poll(self):
+        return False
+
+    @property
+    def available(self):
+        return self._coordinator.last_update_success
+
+    async def async_update(self):
+        await self._coordinator.async_request_refresh()
+
+    async def async_added_to_hass(self):
+        self.async_on_remove(
+            self._coordinator.async_add_listener(self.async_write_ha_state)
+        )
+
+
+class MagisterMededelingenSensor(SensorEntity):
+    """Aantal mededelingen met de nieuwste mededelingen als attribuut."""
+    _unrecorded_attributes = frozenset({"laatste"})
+
+    def __init__(self, coordinator, name):
+        self._coordinator = coordinator
+        self._attr_unique_id = f"{coordinator.entry_id}_magister_mededelingen"
+        self._attr_name = f"{name} mededelingen"
+        self._attr_icon = "mdi:bullhorn-outline"
+
+    def _get_mededelingen(self):
+        data = self._coordinator.data or {}
+        mededelingen = data.get("mededelingen")
+        return mededelingen if isinstance(mededelingen, dict) else {}
+
+    @property
+    def state(self):
+        aantal = self._get_mededelingen().get("aantal")
+        return aantal if isinstance(aantal, int) else 0
+
+    @property
+    def extra_state_attributes(self):
+        return {"laatste": self._get_mededelingen().get("laatste", [])}
+
+    @property
+    def should_poll(self):
+        return False
+
+    @property
+    def available(self):
+        return self._coordinator.last_update_success
+
+    async def async_update(self):
+        await self._coordinator.async_request_refresh()
+
+    async def async_added_to_hass(self):
         self.async_on_remove(
             self._coordinator.async_add_listener(self.async_write_ha_state)
         )

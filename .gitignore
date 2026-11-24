@@ -17,6 +17,9 @@ dist/
 
 # Debug artifacts / dumps
 raw_dump.json
+# Ruwe --dump-raw snapshots bevatten persoonsgegevens; nooit committen
+*dump*.json
+baseline.json
 LOGS HA/
 .magister*
 

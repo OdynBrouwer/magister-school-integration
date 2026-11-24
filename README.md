@@ -537,6 +537,10 @@ Exitcode `0` = identiek, `1` = verschillen gevonden, `2` = invoerfout. Met
 `--json` krijg je het rapport als JSON, wat het bruikbaar maakt in een cronjob
 of GitHub Action. Tests: `pytest -q test_api_diff.py`.
 
+> **Let op:** een dump bevat je eigen cijfers, rooster en persoonsgegevens.
+> Bewaar hem buiten de repository; `*.json` met `dump` in de naam en
+> `baseline.json` staan daarom in `.gitignore`.
+
 ## 🗃️ Database
 
 Omvangrijke attributen worden sinds **v2.2.1** automatisch uitgesloten van de

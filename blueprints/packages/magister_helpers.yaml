@@ -29,6 +29,12 @@ input_boolean:
   magister_absenties:
     name: Magister absentiemeldingen
     icon: mdi:account-alert
+  magister_berichten:
+    name: Magister berichtmeldingen
+    icon: mdi:email-alert-outline
+  magister_mededelingen:
+    name: Magister mededelingenmeldingen
+    icon: mdi:bullhorn-outline
   magister_dagoverzicht:
     name: Magister dagelijks overzicht
     icon: mdi:calendar-today

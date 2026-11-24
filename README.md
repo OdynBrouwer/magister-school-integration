@@ -44,7 +44,8 @@ Stabiele release met alle fixes uit de bètareeks.
 - **Meerdere accounts (#50)** — de registratie van de meegeleverde kaart is geserialiseerd; een tweede configuratie-entry faalt niet meer op een dubbele route.
 - **Widgethoogte (#49)** — `widget_height` en `widget_heights` op de kaart, inclusief `auto` voor volledige hoogte zonder interne scrollbar.
 - **Kaartcache** — een bestaande Lovelace-resource wordt bijgewerkt naar de actuele `?v=`-versie.
-- **Blueprints** — meldingen bij lesuitval, huiswerk, cijfers, absenties en roosterwijzigingen, plus een dagelijks overzicht. Zie [blueprints/README.md](blueprints/README.md).
+- **Blueprints** — meldingen bij lesuitval, huiswerk, cijfers, absenties, roosterwijzigingen en nieuwe berichten, plus een dagelijks overzicht. Zie [blueprints/README.md](blueprints/README.md).
+- **📬 Berichten-blueprint** — kant-en-klare melding bij een nieuw bericht of een nieuwe mededeling, inclusief onderwerp en afzender.
 
 ## ✨ Nieuw in v2.3.1
 
@@ -98,9 +99,11 @@ Stabiele release met alle fixes uit de bètareeks.
 
 ### Blueprints
 
-Deze repository bevat optionele blueprints voor meldingen en een dagelijks
-Magister-overzicht. Open de [blueprint-documentatie](blueprints/README.md) voor
-importknoppen, installatie en de optionele helpers.
+Deze repository bevat drie optionele blueprints voor meldingen (lesuitval,
+huiswerk, cijfers, absenties, roosterwijzigingen, nieuwe berichten en
+mededelingen) en een dagelijks Magister-overzicht. Open de
+[blueprint-documentatie](blueprints/README.md) voor importknoppen, installatie en
+de optionele helpers.
 
 ## ⚙️ Configuratie
 

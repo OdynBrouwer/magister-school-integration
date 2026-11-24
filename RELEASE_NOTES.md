@@ -1,3 +1,17 @@
+# Release v2.3.2b6 (beta)
+
+## GitHub release text
+
+Magister School Integration v2.3.2b6 fixes bundled-card cache updates and card sizing.
+
+### Fixes
+
+- Existing Lovelace resource entries are updated to the current manifest/card version instead of keeping an old `?v=` URL.
+- The card exposes `getCardSize()` and `getGridOptions()` for configurable dashboard height.
+- Full-height and per-widget height options remain available through `widget_height` and `widget_heights`.
+
+## Previous release: v2.3.2b5
+
 # Release v2.3.2b5 (beta)
 
 ## GitHub release text

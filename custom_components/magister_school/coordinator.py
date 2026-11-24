@@ -24,10 +24,10 @@ class MagisterDataUpdateCoordinator(DataUpdateCoordinator):
         school: str,
         username: str,
         password: str,
-        totp_secret: str = None,
+        totp_secret: str | None = None,
         days_back: int = 0,
         days_forward: int = 14,
-        history_file: str = None,
+        history_file: str | None = None,
         poll_interval: int = DEFAULT_POLL_INTERVAL,
     ):
         self.entry_id = entry.entry_id

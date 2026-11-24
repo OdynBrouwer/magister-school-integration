@@ -1,6 +1,21 @@
-# Release v2.3.3b2 (beta)
+# Release v2.3.3b3 (beta)
 
 ## GitHub release text
+
+Magister School Integration v2.3.3b3 is een kleine opruimversie: de accountkeuze-logregel toont geen `None` meer.
+
+### Aangepast
+
+- Bij het loggen van de accountkeuze (`--debug`, buiten JSON-modus) wordt een ontbrekende gebruikersnaam nu als `?` weergegeven in plaats van `None`.
+- Geen gedragswijziging: de integratie draait altijd met `--json`, waarbij deze logregel niet uitgevoerd wordt.
+
+### HACS update text
+
+Beta: alleen opschoning van de debuguitvoer bij de accountkeuze; geen gedragswijziging.
+
+## Previous release: v2.3.3b2
+
+# Release v2.3.3b2 (beta)
 
 Magister School Integration v2.3.3b2 ondersteunt alle aanmeldstappen die Magister tijdens het inloggen kan terugsturen.
 

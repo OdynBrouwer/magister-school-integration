@@ -1,3 +1,39 @@
+# Release v2.4.0
+
+## GitHub release text
+
+Magister School Integration v2.4.0 voegt **berichten** en **mededelingen** toe: twee sensoren die laten zien of er iets nieuws van school is. Daarnaast is het inloggen robuuster geworden voor accounts met meerdere gebruikers of een passkey.
+
+### Nieuw
+
+- **`sensor.magister_data_ongelezen_berichten`** — aantal ongelezen berichten over alle mappen. Attributen: `mappen` (per map de telling) en `laatste` (de vijf nieuwste berichten met onderwerp, afzender, datum, gelezen-status en of er bijlagen zijn).
+- **`sensor.magister_data_mededelingen`** — aantal mededelingen van school, met attribuut `laatste`.
+- Nieuwe API-calls in `magister.py`: `berichten`, `berichten/mappen/alle`, `berichten/mappen/{id}/berichten` en `mededelingen`. Die horen bij het account, niet bij een kind.
+
+### Verbeterd
+
+- **Accountkeuze (`userselector`)** — hoort één login bij meerdere gebruikers, dan kiest de integratie automatisch het juiste account. Voorheen stopte de login met `Unhandled login action: 'userselector'`.
+- **Passkey-promo voorkómen** — bij de wachtwoordstap worden `userSkippedFido` en `userWantsToPairSoftToken` meegestuurd, zoals de Magister-webapp doet, zodat de promo in één keer overgeslagen wordt.
+- **Verlopen sessie** — een `Invalid Operation`-antwoord wordt nu ook als verlopen sessie herkend en automatisch hersteld.
+- **Stille debuguitvoer** — een ontbrekende gebruikersnaam wordt als `?` gelogd in plaats van `None`.
+- **Typefouten opgeruimd** — de integratie is statisch type-schoon (Pylance/pyright), zonder gedragswijziging.
+
+### Ontwikkelhulpmiddelen (niet meegeleverd met HACS)
+
+- `tools/magister_api_diff.py` — vergelijkt twee `--dump-raw`-snapshots en toont nieuwe, verdwenen en van type veranderde velden.
+- `tools/magister_bundle_diff.py` — scant de openbare Magister-bundels op API-paden, OIDC-scopes, login-acties en feature-vlaggen.
+- Beide staan in de map `tools/`; HACS installeert alleen `custom_components/magister_school/`.
+
+### Privacy
+
+Alleen de **telling** komt in de recorder-historie. Onderwerp en afzender staan in attributen die via `_unrecorded_attributes` buiten de historie blijven. Ontbrekende of onverwachte velden leveren geen crash maar een lege waarde.
+
+### HACS update text
+
+Nieuwe sensors voor ongelezen berichten en mededelingen, met de nieuwste berichten als attribuut. Alleen de telling wordt opgeslagen in de historie. Daarnaast robuuster inloggen bij accountkeuze en passkey-promo.
+
+## Previous release: v2.4.0b0
+
 # Release v2.4.0b0 (beta)
 
 ## GitHub release text

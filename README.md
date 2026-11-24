@@ -19,6 +19,19 @@ Integreer Magister schoolinformatie direct in je Home Assistant dashboard. Toon 
 - **📖 Studiewijzers** - Volledige studiewijzer-teksten met behoud van lijstopmaak
 - **🚫 Uitval & Wijzigingen** - Vervallen lessen verschijnen ook in de roosterwijzigingen
 - **💾 Recorder-vriendelijk** - Omvangrijke attributen automatisch uitgesloten van de recorder-historie
+- **📬 Berichten & Mededelingen** - Aantal ongelezen berichten en mededelingen, met de nieuwste als attribuut
+
+## ✨ Nieuw in v2.4.0
+
+Eerste uitbreiding die uit de API-verkenning kwam: **berichten** en **mededelingen** zijn nu beschikbaar, en het inloggen is robuuster.
+
+- **`sensor.magister_data_ongelezen_berichten`** — aantal ongelezen berichten over alle mappen. Attributen `mappen` (per map de telling) en `laatste` (de vijf nieuwste met onderwerp, afzender, datum, gelezen-status en of er bijlagen zijn).
+- **`sensor.magister_data_mededelingen`** — aantal mededelingen van school, met attribuut `laatste`.
+- **Privacy** — alleen de telling komt in de recorder-historie; onderwerp en afzender staan in attributen die buiten de historie blijven.
+- **Accountkeuze (`userselector`)** — hoort één login bij meerdere gebruikers, dan kiest de integratie automatisch het juiste account in plaats van te stoppen met `Unhandled login action`.
+- **Passkey-promo voorkómen** — bij de wachtwoordstap gaan `userSkippedFido` en `userWantsToPairSoftToken` mee, zoals de Magister-webapp doet.
+- **Verlopen sessie** — ook een `Invalid Operation`-antwoord wordt nu als verlopen sessie herkend en hersteld.
+- **Ontwikkelhulpmiddelen** (map `tools/`, wordt níet door HACS geïnstalleerd) — `magister_api_diff.py` en `magister_bundle_diff.py` maken API-wijzigingen bij Magister zichtbaar vóórdat ze de integratie breken. Zie [Magister-API in de gaten houden](#magister-api-in-de-gaten-houden).
 
 ## ✨ Nieuw in v2.3.2
 

@@ -20,6 +20,8 @@ raw_dump.json
 # Ruwe --dump-raw snapshots bevatten persoonsgegevens; nooit committen
 *dump*.json
 baseline.json
+# Baseline van de bundelscan is schoolspecifiek
+magister_bundle_baseline.json
 LOGS HA/
 .magister*
 

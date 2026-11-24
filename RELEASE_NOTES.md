@@ -1,3 +1,26 @@
+# Release v2.3.3b5 (beta)
+
+## GitHub release text
+
+Magister School Integration v2.3.3b5 voegt een tweede hulpmiddel toe dat nieuwe Magister-functies opspoort — deze keer ook compleet nieuwe rubrieken, en zonder dat er een account voor nodig is.
+
+### Nieuw
+
+- **`tools/magister_bundle_diff.py`** — scant de openbare JavaScript-bundels van de Magister-webapp (`/magister/`, `/op/`, `oidc_config.js` en de loginbundle) en vergelijkt die met een baseline. Wat eruit komt: alle `/api/...`-paden (61 stuks bij de laatste meting), alle OIDC-`scopes` (= de feature-lijst van Magister) en alle `action:`-waarden uit de loginflow (14 stappen).
+- Een nieuwe scope of een nieuw API-pad betekent vrijwel altijd een nieuwe functie. Bestandsnamen met content-hash (`app.<hash>.js`) en id's in het pad worden genormaliseerd, zodat een nieuwe build geen ruis geeft.
+- **`test_bundle_diff.py`** — 12 tests voor normalisatie, het filteren van ruis, scope/config-parsing, het diffen en de exitcodes.
+
+### Documentatie
+
+- README-sectie **Magister-API in de gaten houden** is gesplitst in twee hulpmiddelen: bestaande data wijzigt (`magister_api_diff.py`, met account) en nieuwe rubrieken/loginwijzigingen (`magister_bundle_diff.py`, zonder account).
+- Vastgelegd dat `tools/` ontwikkelgereedschap is: HACS installeert alleen `custom_components/magister_school/`, dus deze scripts worden nooit meegeleverd.
+
+### HACS update text
+
+Beta: nieuw ontwikkelhulpmiddel dat nieuwe Magister-functies detecteert via de openbare webapp-bundels. Aan de integratie zelf verandert niets.
+
+## Previous release: v2.3.3b4
+
 # Release v2.3.3b4 (beta)
 
 ## GitHub release text

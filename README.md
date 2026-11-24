@@ -513,9 +513,15 @@ Voor indiening in de **HACS-defaultstore** is nog nodig:
 
 ### Magister-API in de gaten houden
 
-Magister publiceert geen changelog. Nieuwe velden of hele rubrieken vallen
-daardoor pas op als er iets stukgaat. Met `tools/magister_api_diff.py` vergelijk
-je twee ruwe API-dumps, zodat je vooraf ziet wat er veranderd is:
+Magister publiceert geen changelog. Er zijn twee ontwikkelhulpmiddelen in
+`tools/` om wijzigingen tóch te zien aankomen. Beide zijn ontwikkelgereedschap:
+HACS installeert alleen `custom_components/magister_school/`, dus deze scripts
+worden nooit meegeleverd met de integratie.
+
+#### Nieuwe velden in bestaande data — `tools/magister_api_diff.py`
+
+Vergelijkt twee ruwe API-dumps en laat zien welke velden erbij kwamen (`+`),
+verdwenen (`-`) of van type veranderden (`~`).
 
 ```bash
 # 1. Maak een nulmeting (draai dit buiten Home Assistant, met je eigen account)
@@ -528,18 +534,49 @@ python3 custom_components/magister_school/script/magister.py --json \
 python3 tools/magister_api_diff.py baseline.json current.json
 ```
 
-Uitvoer per endpoint: `+` nieuw veld, `-` verdwenen veld, `~` type gewijzigd,
-en een regel voor endpoints die maar in één van de twee dumps zitten. Query-
-strings en getallen in het pad worden genegeerd, zodat een andere datum of een
-ander leerling-id geen ruis oplevert.
-
-Exitcode `0` = identiek, `1` = verschillen gevonden, `2` = invoerfout. Met
-`--json` krijg je het rapport als JSON, wat het bruikbaar maakt in een cronjob
-of GitHub Action. Tests: `pytest -q test_api_diff.py`.
+Query-strings en getallen in het pad worden genegeerd, zodat een andere datum of
+een ander leerling-id geen ruis oplevert. Exitcode `0` = identiek, `1` =
+verschillen, `2` = invoerfout. Met `--json` krijg je het rapport als JSON.
+Tests: `pytest -q test_api_diff.py`.
 
 > **Let op:** een dump bevat je eigen cijfers, rooster en persoonsgegevens.
 > Bewaar hem buiten de repository; `*.json` met `dump` in de naam en
 > `baseline.json` staan daarom in `.gitignore`.
+
+#### Nieuwe rubrieken en loginwijzigingen — `tools/magister_bundle_diff.py`
+
+De Magister-webapp is gewone JavaScript die **zonder account** te downloaden is.
+Alles wat de app kan, staat in die bundels: API-paden, OIDC-scopes (de
+feature-lijst van Magister) en de stappen van de loginflow. Dit script scant ze
+en vergelijkt de uitkomst met een baseline.
+
+```bash
+# eerste run schrijft de baseline, elke volgende run toont de verschillen
+python3 tools/magister_bundle_diff.py --schoolserver <school>.magister.net
+python3 tools/magister_bundle_diff.py --schoolserver <school>.magister.net --json
+```
+
+Wat er gescand wordt:
+
+| Bron | Wat het oplevert |
+|---|---|
+| `/{school}/magister/` + scripts | API-paden van de leerlingenapp |
+| `/{school}/op/` + scripts | API-paden van het medewerkers/oudersportaal (de meeste routes) |
+| `/{school}/oidc_config.js` | OIDC-instellingen en alle `scopes` — één scope per functiegebied |
+| loginbundle via `connect/authorize` | alle `action:`-waarden, dus elke stap die het inloggen kan terugsturen |
+
+Een nieuwe scope of een nieuw `/api/...`-pad betekent bijna altijd een nieuwe
+functie van Magister. Bestandsnamen met een content-hash (`app.<hash>.js`) en
+getallen in het pad worden genormaliseerd, zodat een nieuwe build geen ruis
+geeft. Opties: `--baseline <pad>`, `--update` (baseline verversen), `--entry`
+(extra ingangspagina), `--no-login`, `--timeout`, `--json`.
+Exitcode `0` = identiek, `1` = verschillen, `2` = netwerk-/invoerfout.
+Tests: `pytest -q test_bundle_diff.py`.
+
+> **Kanttekening:** dit ziet alleen wat de app-bundels noemen. Endpoints die pas
+> na inloggen door extra chunks worden geladen, blijven buiten beeld; daarvoor is
+> een ingelogde scan nodig (zie `getlink()` in `magister.py`).
+
 
 ## 🗃️ Database
 

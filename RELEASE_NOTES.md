@@ -1,3 +1,22 @@
+# Release v2.3.2b5 (beta)
+
+## GitHub release text
+
+Magister School Integration v2.3.2b5 fixes duplicate bundled-card registration during multi-account startup and adds configurable widget heights to the dashboard card.
+
+### Fixes
+
+- Card static-path and Lovelace-resource registration is serialized for multiple Magister config entries (#50).
+- The card accepts `widget_height` for all widgets and `widget_heights` for individual widgets (#49).
+- Use `widget_height: auto` or `widget_height: null` to remove the default internal scrollbar height.
+- Use `widget_heights: {rooster_vandaag: auto, huiswerk: 600}` for per-widget control.
+
+### HACS update text
+
+Beta fix for duplicate card startup registration and new configurable card/widget heights.
+
+## Previous release: v2.3.2b4
+
 # Release v2.3.2b4 (beta)
 
 ## GitHub release text

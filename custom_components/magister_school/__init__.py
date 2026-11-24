@@ -1,5 +1,6 @@
 """Magister School integration setup."""
 
+import asyncio
 import json
 import logging
 from pathlib import Path
@@ -34,37 +35,39 @@ def _card_version() -> str:
 async def _async_register_card(hass: HomeAssistant) -> None:
     """Serve the bundled Lovelace card and register it as a dashboard resource."""
     domain_data = hass.data.setdefault(DOMAIN, {})
+    registration_lock = domain_data.setdefault("card_registration_lock", asyncio.Lock())
 
-    if not domain_data.get("card_static_registered"):
-        www_dir = Path(__file__).parent / "www"
-        if not (www_dir / CARD_FILENAME).is_file():
-            _LOGGER.debug("Bundled Magister card not found, skipping registration")
+    async with registration_lock:
+        if not domain_data.get("card_static_registered"):
+            www_dir = Path(__file__).parent / "www"
+            if not (www_dir / CARD_FILENAME).is_file():
+                _LOGGER.debug("Bundled Magister card not found, skipping registration")
+                return
+            await hass.http.async_register_static_paths(
+                [StaticPathConfig(CARD_URL, str(www_dir / CARD_FILENAME), False)]
+            )
+            domain_data["card_static_registered"] = True
+
+        resources = getattr(hass.data.get(LOVELACE_DATA), "resources", None)
+        if resources is None or not hasattr(resources, "async_create_item"):
+            _LOGGER.debug("Lovelace resources unavailable, not registering card")
             return
-        await hass.http.async_register_static_paths(
-            [StaticPathConfig(CARD_URL, str(www_dir / CARD_FILENAME), False)]
-        )
-        domain_data["card_static_registered"] = True
 
-    resources = getattr(hass.data.get(LOVELACE_DATA), "resources", None)
-    if resources is None or not hasattr(resources, "async_create_item"):
-        _LOGGER.debug("Lovelace resources unavailable, not registering card")
-        return
+        if not getattr(resources, "loaded", True):
+            await resources.async_get_info()
 
-    if not getattr(resources, "loaded", True):
-        await resources.async_get_info()
+        if any(
+            str(item.get("url", "")).startswith(CARD_URL)
+            for item in resources.async_items()
+        ):
+            return
 
-    if any(
-        str(item.get("url", "")).startswith(CARD_URL)
-        for item in resources.async_items()
-    ):
-        return
-
-    try:
-        await resources.async_create_item(
-            {"res_type": "module", "url": f"{CARD_URL}?v={_card_version()}"}
-        )
-    except Exception as err:  # noqa: BLE001 - a failed resource must not break setup
-        _LOGGER.warning("Could not register Magister card resource: %s", err)
+        try:
+            await resources.async_create_item(
+                {"res_type": "module", "url": f"{CARD_URL}?v={_card_version()}"}
+            )
+        except Exception as err:  # noqa: BLE001 - a failed resource must not break setup
+            _LOGGER.warning("Could not register Magister card resource: %s", err)
 
 
 async def _async_migrate_unique_ids(hass: HomeAssistant, entry: ConfigEntry) -> None:

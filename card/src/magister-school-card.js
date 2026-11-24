@@ -154,6 +154,10 @@ class MagisterSchoolCard extends LitElement {
       min-width: 0;
     }
 
+    .widget-slot {
+      min-width: 0;
+    }
+
     @media (max-width: 1200px) {
       .column-container {
         flex-wrap: wrap;
@@ -286,8 +290,8 @@ class MagisterSchoolCard extends LitElement {
     
     .widget-content {
       flex-grow: 1;
-      overflow-y: auto;
-      max-height: 400px;
+      overflow-y: var(--magister-widget-overflow, auto);
+      max-height: var(--magister-widget-height, 400px);
     }
     
     /* Specifieke Widget Styles */
@@ -467,6 +471,8 @@ class MagisterSchoolCard extends LitElement {
       layout: 'auto',
       show_widgets: ['stats', 'schooltijden', 'volgende_schooldag', 'rooster_vandaag', 'huiswerk', 'cijfers', 'voortgangscijfers', 'opdrachten'],
       widget_columns: null,
+      widget_height: 400,
+      widget_heights: {},
       hide_layout_selector: false,
       hide_kind_info: false,
       hide_boekingen: false,
@@ -651,25 +657,56 @@ class MagisterSchoolCard extends LitElement {
   _renderWidgets() {
     const showWidgets = this.config.show_widgets || ['stats', 'schooltijden', 'volgende_schooldag', 'rooster_vandaag', 'huiswerk', 'cijfers', 'voortgangscijfers', 'opdrachten'];
     const widgets = [];
-    
-    if (showWidgets.includes('stats')) widgets.push(this._renderStatsWidget());
-    if (showWidgets.includes('schooltijden')) widgets.push(this._renderSchooltijdenWidget());
-    if (showWidgets.includes('week_schooltijden')) widgets.push(this._renderWeekSchooltijdenWidget());
-    if (showWidgets.includes('volgende_schooldag')) widgets.push(this._renderVolgendeSchooldagWidget());
-    if (showWidgets.includes('volgende_les')) widgets.push(this._renderVolgendeLesWidget());
-    if (showWidgets.includes('rooster_vandaag')) widgets.push(this._renderRoosterWidget());
-    if (showWidgets.includes('rooster_meta')) widgets.push(this._renderRoosterMetaWidget());
-    if (showWidgets.includes('rooster_morgen')) widgets.push(this._renderRoosterMorgenWidget());
-    if (showWidgets.includes('huiswerk')) widgets.push(this._renderHuiswerkWidget());
-    if (showWidgets.includes('cijfers')) widgets.push(this._renderCijfersWidget());
-    if (showWidgets.includes('voortgangscijfers')) widgets.push(this._renderVoortgangscijfersWidget());
-    if (showWidgets.includes('opdrachten')) widgets.push(this._renderOpdrachtenWidget());
-    if (showWidgets.includes('absenties')) widgets.push(this._renderAbsentiesWidget());
-    if (showWidgets.includes('wijzigingen')) widgets.push(this._renderWijzigingenWidget());
-    if (showWidgets.includes('aanmeldingen')) widgets.push(this._renderAanmeldingenWidget());
-    if (showWidgets.includes('activiteiten')) widgets.push(this._renderActiviteitenWidget());
+    const renderers = {
+      stats: () => this._renderStatsWidget(),
+      schooltijden: () => this._renderSchooltijdenWidget(),
+      week_schooltijden: () => this._renderWeekSchooltijdenWidget(),
+      volgende_schooldag: () => this._renderVolgendeSchooldagWidget(),
+      volgende_les: () => this._renderVolgendeLesWidget(),
+      rooster_vandaag: () => this._renderRoosterWidget(),
+      rooster_meta: () => this._renderRoosterMetaWidget(),
+      rooster_morgen: () => this._renderRoosterMorgenWidget(),
+      huiswerk: () => this._renderHuiswerkWidget(),
+      cijfers: () => this._renderCijfersWidget(),
+      voortgangscijfers: () => this._renderVoortgangscijfersWidget(),
+      opdrachten: () => this._renderOpdrachtenWidget(),
+      absenties: () => this._renderAbsentiesWidget(),
+      wijzigingen: () => this._renderWijzigingenWidget(),
+      aanmeldingen: () => this._renderAanmeldingenWidget(),
+      activiteiten: () => this._renderActiviteitenWidget()
+    };
+
+    for (const name of showWidgets) {
+      if (renderers[name]) {
+        widgets.push(html`
+          <div class="widget-slot" style="${this._widgetHeightStyle(name)}">
+            ${renderers[name]()}
+          </div>
+        `);
+      }
+    }
 
     return widgets;
+  }
+
+  _widgetHeightStyle(name) {
+    const heights = this.config.widget_heights || {};
+    let height = Object.prototype.hasOwnProperty.call(heights, name)
+      ? heights[name]
+      : this.config.widget_height;
+
+    if (height === null || height === undefined || height === '' ||
+        height === 'auto' || height === 'none') {
+      return '--magister-widget-height: none; --magister-widget-overflow: visible;';
+    }
+    if (typeof height === 'number') {
+      height = `${height}px`;
+    }
+    const safeHeight = String(height).replace(/[^0-9a-zA-Z%. -]/g, '');
+    if (!safeHeight) {
+      return '--magister-widget-height: 400px; --magister-widget-overflow: auto;';
+    }
+    return `--magister-widget-height: ${safeHeight}; --magister-widget-overflow: auto;`;
   }
 
   // Magister also schedules room and group bookings as soort 'Algemeen':

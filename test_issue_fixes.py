@@ -724,8 +724,21 @@ class TestHacsReviewFixes:
         init = self._read("__init__.py")
         assert "async_register_static_paths" in init
         assert "async_create_item" in init
+        assert "card_registration_lock" in init
+        assert "asyncio.Lock" in init
         manifest = json.loads(self._read("manifest.json"))
         assert "lovelace" in manifest["dependencies"]
+
+    def test_card_supports_configurable_widget_heights(self):
+        repository_root = os.path.dirname(os.path.dirname(self.COMPONENT))
+        card = open(
+            os.path.join(repository_root, "card", "src", "magister-school-card.js"),
+            encoding="utf-8",
+        ).read()
+        assert "widget_height" in card
+        assert "widget_heights" in card
+        assert "_widgetHeightStyle" in card
+        assert "--magister-widget-height" in card
 
 
 def _load_api_module():

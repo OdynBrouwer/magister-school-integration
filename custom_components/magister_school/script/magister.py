@@ -41,6 +41,8 @@ import time as time_mod
 from pathlib import Path
 import argparse
 from concurrent.futures import ThreadPoolExecutor
+from math import ceil
+from threading import Lock
 from typing import Any
 
 EXIT_AUTH_FAILED = 77
@@ -199,7 +201,7 @@ def studiewijzer_onderdelen(mg, kind_id, studiewijzer_id, onderdelen):
     """Fetch full section text; the overview only contains previews."""
     def fetch(onderdeel):
         # Each worker needs its own opener, but shares the current login.
-        client = Magister(mg.args)
+        client = Magister(mg.args, rate_limit=mg._rate_limit)
         client.access_token = mg.access_token
         client.xsrftoken = mg.xsrftoken
         client._raw_dump = mg._raw_dump
@@ -329,12 +331,44 @@ def generate_totp(secret_b32):
     return str(code_int % 1000000).zfill(6)
 
 
+class _RateLimitReached(TimeoutError):
+    def __init__(self, seconds: int):
+        self.seconds = max(1, min(seconds, 300))
+        super().__init__(f"Magister rate limit reached; retry in {self.seconds}s")
+
+
+class _RateLimit:
+    """Share a server cooldown between requests in one fetch."""
+
+    def __init__(self):
+        self._lock = Lock()
+        self._resume_at = 0.0
+        # Leave time for HTTP requests within the 90-second subprocess timeout.
+        self._retry_deadline = time_mod.monotonic() + 65
+
+    def defer(self, seconds: int) -> None:
+        with self._lock:
+            # Allow for the server reporting a rounded number of seconds.
+            self._resume_at = max(self._resume_at, time_mod.monotonic() + seconds + 1)
+
+    def wait(self) -> None:
+        while True:
+            with self._lock:
+                delay = self._resume_at - time_mod.monotonic()
+                if delay <= 0:
+                    return
+                if self._resume_at > self._retry_deadline:
+                    raise _RateLimitReached(ceil(delay))
+            time_mod.sleep(delay)
+
+
 class Magister:
     """
     object encapsulating all magister functionality.
     """
-    def __init__(self, args):
+    def __init__(self, args, *, rate_limit: _RateLimit | None = None):
         self.args = args
+        self._rate_limit = rate_limit if rate_limit is not None else _RateLimit()
         self.xsrftoken = args.xsrftoken
         self.access_token = args.accesstoken
         self.magisterserver = args.magisterserver
@@ -415,22 +449,20 @@ class Magister:
             )
         if status in (502, 503, 504) and not is_json:
             raise TimeoutError(f"Magister server returned HTTP {status}")
-        if "application/json" in ctype:
-            js = json.loads(raw)
-            if (
-                isinstance(js, dict)
-                and (
-                    js.get("message") == "Rate limit reached"
-                    or "rate limit" in str(js.get("message", "")).lower()
-                )
-            ):
-                seconds = js.get("secondsLeft")
-                if not isinstance(seconds, (int, float)):
-                    seconds = 17
-                seconds = max(1, min(int(seconds), 300))
-                raise TimeoutError(
-                    f"Magister rate limit reached; retry in {seconds}s"
-                )
+        if status == 429 or is_json:
+            try:
+                js = json.loads(raw) if is_json else None
+            except ValueError:
+                if status != 429:
+                    raise
+                js = None
+            details = object_data(js)
+            if status == 429 or "rate limit" in str(details.get("message", "")).lower():
+                seconds = details.get("secondsLeft")
+                if not isinstance(seconds, (int, float)) or not seconds > 0:
+                    retry_after = response.headers.get("Retry-After", "").strip()
+                    seconds = int(retry_after) if retry_after.isdecimal() else 17
+                raise _RateLimitReached(ceil(min(seconds, 300)))
             # alleen loggen als debug én niet json-uitvoer
             if getattr(self.args, "debug", False) and not getattr(self.args, "json", False):
                 self.logprint(js)
@@ -748,7 +780,17 @@ class Magister:
             qs = "?" + urllib.parse.urlencode(querydict)
 
         path = "/".join(str(_) for _ in args)
-        response = self.httpreq(f"https://{self.schoolserver}/api/{path}{qs}")
+        url = f"https://{self.schoolserver}/api/{path}{qs}"
+        for attempt in range(3):
+            self._rate_limit.wait()
+            try:
+                response = self.httpreq(url)
+            except _RateLimitReached as error:
+                self._rate_limit.defer(error.seconds)
+                if attempt == 2:
+                    raise
+            else:
+                break
         if self._raw_dump is not None:
             self._raw_dump.setdefault(path + qs, response)
 
@@ -1113,7 +1155,7 @@ def main():
             raise
         invalidate_access_token(args.cache)
         args.accesstoken = None
-        mg = Magister(args)
+        mg = Magister(args, rate_limit=mg._rate_limit)
         if not mg.login(args.username, args.password):
             if getattr(args, "json", False):
                 print("Login failed after cached Magister session was rejected", file=sys.stderr)

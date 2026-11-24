@@ -803,11 +803,14 @@ class TestOnverwachtAntwoord:
     """
 
     def _magister_met_antwoord(self, response, **attrs):
-        mg = magister.Magister.__new__(magister.Magister)
-        mg._raw_dump = None
-        mg.schoolserver = "example.invalid"
+        mg = magister.Magister(SimpleNamespace(
+            xsrftoken=None,
+            accesstoken=None,
+            magisterserver="example.invalid",
+            schoolserver="example.invalid",
+            debug=False,
+        ))
         mg.httpreq = lambda url: response
-        mg.logprint = lambda *a, **k: None
         for key, value in attrs.items():
             setattr(mg, key, value)
         return mg

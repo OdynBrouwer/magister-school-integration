@@ -110,6 +110,59 @@ def test_extract_scopes_and_config_resolve_the_school_host():
     assert not any(pair.startswith("scope=") for pair in config)
 
 
+def test_extract_config_from_settings_js_captures_feature_flags():
+    js = """window.globalSettings = {
+  apiHost: window.location.origin + '/',
+  featureFlags: {
+    m6LoggingEnabled: true,
+    enableOPP: true
+  },
+  learningMaterialsHostname: 'https://learningmaterials.magister.net',
+  kennisnetLogin: true,
+};
+"""
+
+    config = bundle_diff.extract_config(js, "school.magister.net")
+
+    assert "apiHost=https://school.magister.net/" in config
+    assert "enableOPP=true" in config
+    assert "m6LoggingEnabled=true" in config
+    assert "kennisnetLogin=true" in config
+    assert "learningMaterialsHostname=https://learningmaterials.magister.net" in config
+    assert not any(pair.endswith("={") or pair.endswith("=}") for pair in config)
+
+
+def test_collect_sources_adds_config_for_settings_js(monkeypatch):
+    pages = {
+        "https://school.magister.net/": "<html></html>",
+        "https://school.magister.net/oidc_config.js": (
+            "var config = { authority: 'https://accounts.magister.net',"
+            " scope: 'openid grades.read' };"
+        ),
+        "https://school.magister.net/op/": (
+            '<script src="settings.js"></script>'
+            '<script src="app.abc123def4567890.js"></script>'
+        ),
+        "https://school.magister.net/op/settings.js": (
+            "window.globalSettings = { featureFlags: { enableOPP: true } };"
+        ),
+        "https://school.magister.net/op/app.abc123def4567890.js": 'var u = "/api/berichten";',
+    }
+
+    def fake_fetch(url, timeout):
+        return url, pages[url]
+
+    monkeypatch.setattr(bundle_diff, "_fetch", fake_fetch)
+
+    scans = bundle_diff.collect_sources(
+        "school.magister.net", entries=("/op/",), include_login=False
+    )
+
+    assert scans["school.magister.net/op/app.js"]["routes"] == ["/api/berichten"]
+    assert "enableOPP=true" in scans["school.magister.net/op/settings.js"]["config"]
+    assert scans["school.magister.net/oidc_config.js"]["scopes"] == ["grades.read", "openid"]
+
+
 def test_diff_scans_reports_new_route_scope_and_source():
     baseline = {
         "school.magister.net/op/app.js": {"routes": ["/api/berichten"], "actions": []},

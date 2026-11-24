@@ -1,3 +1,25 @@
+# Release v2.3.3b6 (beta)
+
+## GitHub release text
+
+Magister School Integration v2.3.3b6 breidt de bundelscan uit met de feature-vlaggen van Magister zelf, en legt vast waarom er géén links-crawler komt.
+
+### Nieuw
+
+- **`settings.js` als signaal** — de per-school instellingenpagina van de webapp bevat `featureFlags` (`enableOPP`, `m6LoggingEnabled`, …) en de hostnames van de producten die een school mag gebruiken (`opp`, `attendance`, `lockers`, `learningmaterials`, `calendar`). `tools/magister_bundle_diff.py` legt die nu vast in de `config`-bucket, zodat "Magister zet een nieuw product aan" als verschil opduikt.
+- `extract_config` is niet meer regelgebaseerd: ook éénregelige/minified config wordt gelezen, inclusief `window.location.origin`-samenstellingen.
+- **2 nieuwe tests** in `test_bundle_diff.py` (feature-vlaggen uit `settings.js`, en `collect_sources` die de bucket aanmaakt).
+
+### Onderzocht, niet gebouwd
+
+Met een leerlingaccount is de hypermedia-link-graaf gemeten: alleen de cijfers-endpoints leveren `Links`, samen 5 bereikbare endpoints waarvan 3 nieuw (`cijfers/perioden/{id}`, `cijfers/werkinformatie/{id}`, `leerlingen/{id}/cijfers/kolommen/{id}/gerelateerdekolommen`), en `/api/sessies/current` bestaat niet voor een leerling. Een links-crawler zou dus nauwelijks iets toevoegen; daarom is die geschrapt.
+
+### HACS update text
+
+Beta: bundelscan legt nu ook Magister's feature-vlaggen en product-hostnames vast. Aan de integratie zelf verandert niets.
+
+## Previous release: v2.3.3b5
+
 # Release v2.3.3b5 (beta)
 
 ## GitHub release text

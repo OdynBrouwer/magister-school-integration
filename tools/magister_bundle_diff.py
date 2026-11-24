@@ -38,7 +38,14 @@ _STRING = re.compile(r"""["'`]([^"'`\\\r\n]{2,160})["'`]""")
 _ASSET = re.compile(r"\.(js|css|png|jpe?g|gif|svg|woff2?|ttf|eot|ico|map)$", re.I)
 _ROUTE_CHARS = re.compile(r"^[A-Za-z0-9/{}\-_.$~]+$")
 _ACTION = re.compile(r"""\baction\s*:\s*["']([a-z0-9\-]{2,40})["']""")
-_CONFIG_LINE = re.compile(r"^\s*(\w+)\s*:\s*(.+?),?\s*$", re.M)
+_CONCAT_PART = r"""(?:'[^'\n]*'|"[^"\n]*"|window\.location\.(?:hostname|origin))"""
+_CONFIG_ENTRY = re.compile(
+    r"(?P<key>\w+)\s*:\s*(?P<value>"
+    + _CONCAT_PART
+    + r"(?:\s*\+\s*"
+    + _CONCAT_PART
+    + r")*|true|false|-?\d+(?:\.\d+)?)"
+)
 _SCRIPT_SRC = re.compile(r"""<script[^>]+src=["']([^"']+)["']""", re.I)
 _LOGIN_BUNDLE = re.compile(r"js/account-\w+\.js")
 _HASH_IN_NAME = re.compile(r"[.\-_][0-9a-f]{8,}(?=\.[a-z]+$|$)", re.I)
@@ -97,15 +104,24 @@ def extract_scopes(text: str) -> list[str]:
 
 
 def extract_config(text: str, host: str) -> list[str]:
-    """Return ``key=value`` pairs from oidc_config.js, resolved for this school."""
+    """Return ``key=value`` pairs from oidc_config.js or settings.js.
+
+    ``settings.js`` is per school and carries Magister's own feature switches
+    (``enableOPP``, ``m6LoggingEnabled``) plus the hostnames of the products the
+    school may use, which is the cheapest signal that Magister enabled something
+    new.
+    """
     pairs: list[str] = []
-    for match in _CONFIG_LINE.finditer(text):
-        key = match.group(1)
+    for match in _CONFIG_ENTRY.finditer(text):
+        key = match.group("key")
         if key == "scope":
             continue
-        value = match.group(2).replace("window.location.hostname", f"'{host}'")
+        value = match.group("value").replace("window.location.hostname", f"'{host}'")
+        value = value.replace("window.location.origin", f"'https://{host}'")
         value = re.sub(r"'\s*\+\s*'", "", value).strip()
         value = value.strip("'").strip('"').rstrip(",").strip()
+        if not value or value in "{}":
+            continue
         pairs.append(f"{key}={value}")
     return sorted(set(pairs))
 
@@ -207,7 +223,10 @@ def collect_sources(
             if not script_url.startswith(base):
                 continue
             _, script = _fetch(script_url, timeout)
-            scan(script_url, script)
+            extra = None
+            if script_url.split("?", 1)[0].endswith("/settings.js"):
+                extra = {"config": extract_config(script, host)}
+            scan(script_url, script, extra)
 
     if include_login:
         bundle_url = discover_login_bundle(host, scans[normalise_source(f"{base}/oidc_config.js")]["config"], timeout)

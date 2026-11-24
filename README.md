@@ -563,6 +563,7 @@ Wat er gescand wordt:
 | `/{school}/magister/` + scripts | API-paden van de leerlingenapp |
 | `/{school}/op/` + scripts | API-paden van het medewerkers/oudersportaal (de meeste routes) |
 | `/{school}/oidc_config.js` | OIDC-instellingen en alle `scopes` — één scope per functiegebied |
+| `/{school}/magister/settings.js` | `featureFlags` (`enableOPP`, `m6LoggingEnabled`) en de hostnames van de producten die jouw school mag gebruiken (`opp`, `attendance`, `lockers`, `learningmaterials`, `calendar`) |
 | loginbundle via `connect/authorize` | alle `action:`-waarden, dus elke stap die het inloggen kan terugsturen |
 
 Een nieuwe scope of een nieuw `/api/...`-pad betekent bijna altijd een nieuwe
@@ -574,8 +575,10 @@ Exitcode `0` = identiek, `1` = verschillen, `2` = netwerk-/invoerfout.
 Tests: `pytest -q test_bundle_diff.py`.
 
 > **Kanttekening:** dit ziet alleen wat de app-bundels noemen. Endpoints die pas
-> na inloggen door extra chunks worden geladen, blijven buiten beeld; daarvoor is
-> een ingelogde scan nodig (zie `getlink()` in `magister.py`).
+> na inloggen door extra chunks worden geladen, blijven buiten beeld. Gemeten met
+> een leerlingaccount: de API levert daar nauwelijks hypermedia-links (alleen bij
+> cijfers), dus een crawler zou maar drie extra endpoints vinden. Daarom is die
+> niet gebouwd.
 
 
 ## 🗃️ Database

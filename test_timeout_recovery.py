@@ -89,6 +89,99 @@ def test_http429_is_returned_as_bounded_timeout(monkeypatch):
         client.httpreq("https://example.invalid/api/leerlingen/1/studiewijzers")
 
 
+@pytest.fixture
+def retry_clock(monkeypatch):
+    clock = SimpleNamespace(now=0.0)
+
+    def advance(seconds):
+        clock.now += seconds
+
+    clock.sleep = Mock(side_effect=advance)
+    monkeypatch.setattr(script, "time_mod", SimpleNamespace(
+        monotonic=lambda: clock.now,
+        sleep=clock.sleep,
+    ))
+    return clock
+
+
+@pytest.fixture
+def school_client(retry_clock):
+    return script.Magister(SimpleNamespace(
+        xsrftoken=None,
+        accesstoken="token",
+        magisterserver="example.invalid",
+        schoolserver="example.invalid",
+        debug=False,
+    ))
+
+
+@pytest.mark.parametrize(("status", "headers", "body", "delay"), [
+    (200, {"content-type": "application/json"},
+     b'{"message":"Rate limit reached. Reset in 3 seconds.","secondsLeft":3}', 4),
+    (429, {"Retry-After": "5"}, b"", 6),
+])
+def test_school_fetch_retries_only_the_limited_request(school_client, retry_clock,
+                                                      status, headers, body, delay):
+    success_headers = {"content-type": "application/json"}
+    school_client._read_response = Mock(side_effect=[
+        (SimpleNamespace(status=200, headers=success_headers), b'{"Items":[1]}'),
+        (SimpleNamespace(status=status, headers=headers), body),
+        (SimpleNamespace(status=200, headers=success_headers), b'{"Items":[2]}'),
+    ])
+
+    assert school_client.req("afspraken") == {"Items": [1]}
+    assert school_client.req("studiewijzers", 2) == {"Items": [2]}
+    assert [
+        call.args[0].full_url for call in school_client._read_response.call_args_list
+    ] == [
+        "https://example.invalid/api/afspraken",
+        "https://example.invalid/api/studiewijzers/2",
+        "https://example.invalid/api/studiewijzers/2",
+    ]
+    retry_clock.sleep.assert_called_once_with(delay)
+
+
+@pytest.mark.parametrize(("elapsed", "reset"), [(0, "90"), (60, "6")])
+def test_school_fetch_keeps_cooldown_within_subprocess_budget(school_client, retry_clock, elapsed, reset):
+    retry_clock.now = elapsed
+    school_client._read_response = Mock(return_value=(
+        SimpleNamespace(status=429, headers={"Retry-After": reset}), b"",
+    ))
+
+    with pytest.raises(TimeoutError, match="Magister rate limit reached"):
+        school_client.req("studiewijzers")
+
+    assert school_client._read_response.call_count == 1
+    retry_clock.sleep.assert_not_called()
+
+
+def test_school_fetch_bounds_attempts_per_request(school_client, retry_clock):
+    school_client._read_response = Mock(return_value=(
+        SimpleNamespace(status=429, headers={"Retry-After": "1"}), b"",
+    ))
+
+    with pytest.raises(TimeoutError, match="Magister rate limit reached"):
+        school_client.req("studiewijzers")
+
+    assert school_client._read_response.call_count == 3
+    assert retry_clock.sleep.call_count == 2
+
+
+def test_study_guide_workers_share_the_school_cooldown(school_client, retry_clock, monkeypatch):
+    school_client._rate_limit.defer(3)
+
+    def read_response(self, request, **kwargs):
+        assert retry_clock.now >= 4
+        return SimpleNamespace(status=200, headers={"content-type": "application/json"}), b'{"Titel":"Week 1"}'
+
+    monkeypatch.setattr(script.Magister, "_read_response", read_response)
+
+    assert script.studiewijzer_onderdelen(school_client, 1, 2, [{"Id": 3}]) == [
+        {"Id": 3, "Titel": "Week 1"},
+    ]
+    retry_clock.sleep.assert_called_once_with(4)
+
+
 def test_rate_limit_wait_honors_reset_seconds(monkeypatch):
     failure = subprocess.CalledProcessError(
         75,

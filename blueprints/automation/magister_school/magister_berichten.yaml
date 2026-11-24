@@ -1,0 +1,156 @@
+blueprint:
+  name: Magister - melding bij nieuw bericht
+  description: |
+    ## Magister - melding bij nieuw bericht
+
+    Stuurt een pushmelding wanneer Magister een **nieuw bericht** of een
+    **nieuwe mededeling** van school toont.
+
+    De melding bevat het onderwerp en de afzender. Berichten die er al stonden
+    geven géén tweede melding, ook niet als je ze leest of na een herstart van
+    Home Assistant.
+
+    ### Gebruik
+    1. Kies de sensor `sensor.magister_data_ongelezen_berichten` (berichten) of
+       `sensor.magister_data_mededelingen` (mededelingen).
+    2. Kies het meldingstype dat bij die sensor hoort.
+    3. Kies de notify-entiteit van je telefoon.
+    4. Optioneel: kies een `input_boolean` als hoofdschakelaar en/of als
+       schakelaar voor dit type. Maak die aan via **Instellingen → Apparaten &
+       diensten → Helpers → Boolean**. Laat je ze leeg, dan meldt de automation
+       altijd.
+
+    ### Vereist
+    - De integratie `magister_school` **v2.4.0** of nieuwer (berichten-sensoren).
+    - Home Assistant 2024.8 of nieuwer (notify-entiteiten).
+
+    ### Hoe de meldingen werken
+    - De sensor bevat de **vijf nieuwste** items in het attribuut `laatste`.
+      Een item wordt vergeleken op onderwerp + datum + afzender, dus een
+      bestaand bericht levert nooit een tweede melding op.
+    - Mededelingen zijn alleen beschikbaar als jouw school ze publiceert.
+  domain: automation
+  author: Magister School
+  homeassistant:
+    min_version: 2024.8.0
+  input:
+    magister_sensor:
+      name: Magister-berichtensensor
+      description: >-
+        Kies sensor.magister_data_ongelezen_berichten voor berichten, of
+        sensor.magister_data_mededelingen voor mededelingen.
+      selector:
+        entity:
+          filter:
+            - integration: magister_school
+              domain: sensor
+    soort:
+      name: Soort melding
+      description: Wat meldt deze automation?
+      default: berichten
+      selector:
+        select:
+          options:
+            - label: Nieuwe berichten
+              value: berichten
+            - label: Nieuwe mededelingen
+              value: mededelingen
+    notify_target:
+      name: Notificatie-doel
+      description: >-
+        De notify-entiteit van de telefoon of het account dat de melding
+        ontvangt. Verplicht om meldingen te krijgen; leeg laten mag, dan doet de
+        automation niets.
+      default: ""
+      selector:
+        entity:
+          filter:
+            - domain: notify
+          multiple: false
+    master_switch:
+      name: Hoofdschakelaar (optioneel)
+      description: Alleen melden als deze helper aan staat. Leeg laten = altijd melden.
+      default: ""
+      selector:
+        entity:
+          filter:
+            - domain: input_boolean
+          multiple: false
+    type_switch:
+      name: Schakelaar voor dit meldingstype (optioneel)
+      description: Alleen melden als deze helper aan staat. Leeg laten = altijd melden.
+      default: ""
+      selector:
+        entity:
+          filter:
+            - domain: input_boolean
+          multiple: false
+
+variables:
+  soort: !input soort
+  titel: >-
+    {{ 'Magister - nieuw bericht' if soort == 'berichten' else 'Magister - nieuwe mededeling' }}
+  notify_target: !input notify_target
+  master_switch: !input master_switch
+  type_switch: !input type_switch
+
+trigger:
+  - platform: state
+    entity_id: !input magister_sensor
+
+condition:
+  - condition: template
+    alias: "Notificatiedoel ingesteld"
+    value_template: "{{ notify_target is defined and notify_target != none and notify_target != '' }}"
+  - condition: template
+    alias: "Alleen bij een echte statusovergang tussen twee beschikbare standen"
+    value_template: >-
+      {{ trigger.from_state is defined and trigger.from_state is not none
+         and trigger.to_state is defined and trigger.to_state is not none
+         and trigger.from_state.state not in ['unknown', 'unavailable']
+         and trigger.to_state.state not in ['unknown', 'unavailable'] }}
+  - condition: template
+    alias: "Schakelaars"
+    value_template: >-
+      {{ (not master_switch or is_state(master_switch, 'on'))
+         and (not type_switch or is_state(type_switch, 'on')) }}
+
+action:
+  - variables:
+      oude_items: "{{ trigger.from_state.attributes.get('laatste', []) | list }}"
+      nieuwe_items: "{{ trigger.to_state.attributes.get('laatste', []) | list }}"
+  - repeat:
+      for_each: "{{ nieuwe_items }}"
+      sequence:
+        - variables:
+            item: "{{ repeat.item }}"
+            bestond_al: >-
+              {% set ns = namespace(hit=false) %}
+              {% for oud in oude_items %}
+                {% if oud.get('onderwerp', '') == item.get('onderwerp', '')
+                      and oud.get('verzonden_op', '') == item.get('verzonden_op', '')
+                      and oud.get('afzender', '') == item.get('afzender', '') %}
+                  {% set ns.hit = true %}
+                {% endif %}
+              {% endfor %}
+              {{ ns.hit }}
+        - condition: template
+          alias: "Alleen nieuwe items"
+          value_template: "{{ not bestond_al }}"
+        - condition: template
+          alias: "Onderwerp of afzender aanwezig"
+          value_template: >-
+            {{ (item.get('onderwerp', '') ~ item.get('afzender', '')) | trim != '' }}
+        - action: notify.send_message
+          target:
+            entity_id: !input notify_target
+          data:
+            title: "{{ titel }}"
+            message: >-
+              {{ item.get('onderwerp', '') or 'Nieuw item' }}
+              {%- if item.get('afzender') %} van {{ item.get('afzender') }}{% endif -%}
+              {%- if item.get('verzonden_op') %} ({{ item.get('verzonden_op') }}){% endif -%}
+              {%- if soort == 'berichten' and item.get('map') %} in {{ item.get('map') }}{% endif %}.
+
+mode: queued
+max: 10

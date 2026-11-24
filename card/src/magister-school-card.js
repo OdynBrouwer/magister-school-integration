@@ -492,6 +492,18 @@ class MagisterSchoolCard extends LitElement {
     this._fetchData();
   }
 
+  getCardSize() {
+    return 8;
+  }
+
+  getGridOptions() {
+    const widgetHeight = this.config?.widget_height;
+    if (widgetHeight === null || widgetHeight === 'auto' || widgetHeight === 'none') {
+      return { columns: 12, rows: 'auto', min_columns: 3, min_rows: 1 };
+    }
+    return { columns: 12, rows: 8, min_columns: 3, min_rows: 4 };
+  }
+
   _fetchData() {
     if (!this.hass) return;
     

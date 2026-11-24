@@ -56,15 +56,30 @@ async def _async_register_card(hass: HomeAssistant) -> None:
         if not getattr(resources, "loaded", True):
             await resources.async_get_info()
 
-        if any(
-            str(item.get("url", "")).startswith(CARD_URL)
-            for item in resources.async_items()
-        ):
+        desired_url = f"{CARD_URL}?v={_card_version()}"
+        matching_item = next(
+            (
+                item
+                for item in resources.async_items()
+                if str(item.get("url", "")).startswith(CARD_URL)
+            ),
+            None,
+        )
+        if matching_item is not None:
+            if matching_item.get("url") != desired_url and hasattr(resources, "async_update_item"):
+                try:
+                    await resources.async_update_item(
+                        matching_item["id"],
+                        {"res_type": "module", "url": desired_url},
+                    )
+                    _LOGGER.info("Updated bundled Magister card resource to %s", desired_url)
+                except Exception as err:  # noqa: BLE001 - best-effort resource refresh
+                    _LOGGER.warning("Could not update Magister card resource: %s", err)
             return
 
         try:
             await resources.async_create_item(
-                {"res_type": "module", "url": f"{CARD_URL}?v={_card_version()}"}
+                {"res_type": "module", "url": desired_url}
             )
         except Exception as err:  # noqa: BLE001 - a failed resource must not break setup
             _LOGGER.warning("Could not register Magister card resource: %s", err)

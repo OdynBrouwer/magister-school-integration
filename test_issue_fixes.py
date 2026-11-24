@@ -726,6 +726,8 @@ class TestHacsReviewFixes:
         assert "async_create_item" in init
         assert "card_registration_lock" in init
         assert "asyncio.Lock" in init
+        assert "async_update_item" in init
+        assert "desired_url" in init
         manifest = json.loads(self._read("manifest.json"))
         assert "lovelace" in manifest["dependencies"]
 
@@ -739,6 +741,8 @@ class TestHacsReviewFixes:
         assert "widget_heights" in card
         assert "_widgetHeightStyle" in card
         assert "--magister-widget-height" in card
+        assert "getCardSize" in card
+        assert "getGridOptions" in card
 
 
 def _load_api_module():

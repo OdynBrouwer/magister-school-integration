@@ -100,6 +100,101 @@ def dehtml(html):
     html = re.sub(r"""['"]?(http\S+?)['"]?(?:\s+['"]?\1['"]?)+""", lambda m:m[1], html, flags=re.DOTALL)
     return html
 
+# Berichten en mededelingen horen bij het account, niet bij een los kind.
+BERICHTEN_PER_MAP = 5
+BERICHTEN_MAP_LIMIT = 5
+
+
+def _afzender_naam(item):
+    """Afzender is normaal een object met 'naam', maar kan ook platte tekst zijn."""
+    afzender = item.get("afzender")
+    if isinstance(afzender, str):
+        return afzender
+    naam = object_data(afzender).get("naam")
+    return naam if isinstance(naam, str) else ""
+
+
+def _bericht_samenvatting(item):
+    """Reduceer een bericht tot de velden die de integratie toont."""
+    return {
+        "onderwerp": item.get("onderwerp") or "",
+        "afzender": _afzender_naam(item),
+        "verzonden_op": datum(item.get("verzondenOp")),
+        "is_gelezen": bool(item.get("isGelezen")),
+        "heeft_bijlagen": bool(item.get("heeftBijlagen")),
+    }
+
+
+def _mededeling_samenvatting(item):
+    """Reduceer een mededeling; dit endpoint is vaak leeg, dus velden zijn optioneel."""
+    return {
+        "onderwerp": item.get("onderwerp") or item.get("titel") or "",
+        "afzender": _afzender_naam(item),
+        "verzonden_op": datum(item.get("verzondenOp") or item.get("publicatieDatum")),
+    }
+
+
+def _berichten_samenvatting(mg, warnings):
+    """Ongelezen-telling per map plus de nieuwste berichten van dit account."""
+    if not object_data(mg.req("berichten")).get("links"):
+        return None
+
+    mappen = response_items(
+        mg.req("berichten", "mappen", "alle"),
+        warnings,
+        "berichten_mappen",
+        key="items",
+        required=("id",),
+    )
+    ongelezen = 0
+    map_overzicht = []
+    recent = []
+
+    for map_ in mappen[:BERICHTEN_MAP_LIMIT]:
+        aantal = map_.get("aantalOngelezen")
+        aantal = aantal if isinstance(aantal, int) else 0
+        ongelezen += aantal
+        naam = map_.get("naam") if isinstance(map_.get("naam"), str) else ""
+        map_overzicht.append({"naam": naam, "ongelezen": aantal})
+
+        berichten = response_items(
+            mg.req(
+                "berichten", "mappen", map_["id"], "berichten",
+                dict(top=BERICHTEN_PER_MAP),
+            ),
+            warnings,
+            "berichten",
+            key="items",
+        )
+        for bericht in berichten:
+            samenvatting = _bericht_samenvatting(bericht)
+            samenvatting["map"] = naam
+            recent.append((bericht.get("verzondenOp") or "", samenvatting))
+
+    recent.sort(key=lambda paar: paar[0], reverse=True)
+    return {
+        "ongelezen": ongelezen,
+        "mappen": map_overzicht,
+        "laatste": [samenvatting for _, samenvatting in recent[:BERICHTEN_PER_MAP]],
+    }
+
+
+def _mededelingen_samenvatting(mg, warnings):
+    """Aantal mededelingen plus de nieuwste."""
+    data = mg.req("mededelingen", dict(top=BERICHTEN_PER_MAP))
+    items = response_items(data, warnings, "mededelingen", key="items")
+    totaal = object_data(data).get("totalCount")
+    recent = [
+        (item.get("verzondenOp") or item.get("publicatieDatum") or "", _mededeling_samenvatting(item))
+        for item in items
+    ]
+    recent.sort(key=lambda paar: paar[0], reverse=True)
+    return {
+        "aantal": totaal if isinstance(totaal, int) else len(items),
+        "laatste": [samenvatting for _, samenvatting in recent[:BERICHTEN_PER_MAP]],
+    }
+
+
 def studiewijzer_onderdelen(mg, kind_id, studiewijzer_id, onderdelen):
     """Fetch full section text; the overview only contains previews."""
     def fetch(onderdeel):
@@ -1001,7 +1096,9 @@ def main():
         "absenties": {},
         "opdrachten": {},
         "studiewijzers": {},
-        "activiteiten": {}
+        "activiteiten": {},
+        "berichten": {},
+        "mededelingen": {}
     }
 
     history_path, appointment_history = _load_appointment_history(args.cache, getattr(args, "history_file", None))
@@ -1281,6 +1378,10 @@ def main():
                     for o in studiewijzer_onderdelen(mg, kindid, sw["Id"], items)
                 ]
             })
+
+    # Berichten en mededelingen horen bij het account, niet bij een kind.
+    output_data["berichten"] = _berichten_samenvatting(mg, warnings) or {}
+    output_data["mededelingen"] = _mededelingen_samenvatting(mg, warnings) or {}
 
     if warnings:
         output_data["data_warnings"] = warnings

@@ -358,6 +358,20 @@ def magister_refresh(monkeypatch, tmp_path, capsys):
         "/studiewijzers/11": {"Titel": "Valid", "Onderdelen": {"Items": [{"Id": 20, "Titel": "Week 1"}]}},
         "/studiewijzers/12": {"Titel": "Empty", "Onderdelen": {"Items": []}},
         "/onderdelen/20": {"Omschrijving": "<p>Full section text</p>"},
+        "/mappen/alle": {"items": [{"id": 1, "naam": "Postvak IN", "aantalOngelezen": 2}]},
+        "/mappen/1/berichten": {
+            "items": [
+                {
+                    "onderwerp": "Huiswerk",
+                    "afzender": {"naam": "School"},
+                    "verzondenOp": "2026-11-20T10:00:00Z",
+                    "isGelezen": False,
+                    "heeftBijlagen": False,
+                }
+            ]
+        },
+        "/berichten": {"links": {"mappen": {"href": "/api/berichten/mappen"}}},
+        "/mededelingen": {"items": [], "totalCount": 0},
     }
 
     def run(overrides=None):
@@ -372,6 +386,17 @@ def magister_refresh(monkeypatch, tmp_path, capsys):
         return json.loads(capsys.readouterr().out)
 
     return run
+
+
+def test_account_messages_are_in_refresh_output(magister_refresh):
+    data = magister_refresh()
+
+    assert data["berichten"]["ongelezen"] == 2
+    assert data["berichten"]["mappen"] == [{"naam": "Postvak IN", "ongelezen": 2}]
+    assert data["berichten"]["laatste"][0]["onderwerp"] == "Huiswerk"
+    assert data["berichten"]["laatste"][0]["afzender"] == "School"
+    assert data["mededelingen"] == {"aantal": 0, "laatste": []}
+    assert "data_warnings" not in data
 
 
 @pytest.mark.parametrize("broken_guide", [

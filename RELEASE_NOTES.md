@@ -1,3 +1,24 @@
+# Release v2.3.3b4 (beta)
+
+## GitHub release text
+
+Magister School Integration v2.3.3b4 voegt een hulpmiddel toe om API-wijzigingen bij Magister te zien vóórdat ze de integratie breken.
+
+### Nieuw
+
+- **`tools/magister_api_diff.py`** — vergelijkt twee `--dump-raw`-snapshots en toont per endpoint welke velden erbij kwamen (`+`), verdwenen (`-`) of van type veranderden (`~`), plus endpoints die maar in één dump voorkomen. Query-strings en getallen in het pad worden genegeerd, zodat een andere datum of leerling-id geen ruis geeft. `--json` geeft een machineleesbaar rapport; de exitcodes 0/1/2 maken het bruikbaar in een cronjob of GitHub Action.
+- **`test_api_diff.py`** — 9 tests voor de normalisatie, het flatten van responses, toegevoegde/verdwenen/type-gewijzigde velden en de exitcodes.
+
+### Documentatie
+
+- README-sectie **Magister-API in de gaten houden**: hoe je een nulmeting maakt en die later vergelijkt.
+
+### HACS update text
+
+Beta: nieuw ontwikkelhulpmiddel dat API-wijzigingen bij Magister detecteert. Aan de integratie zelf verandert niets.
+
+## Previous release: v2.3.3b3
+
 # Release v2.3.3b3 (beta)
 
 ## GitHub release text

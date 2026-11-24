@@ -511,6 +511,32 @@ Voor indiening in de **HACS-defaultstore** is nog nodig:
   voor het logo vóór installatie (het icoon in `brand/icon.png` wordt gebruikt
   zodra de integratie geïnstalleerd is)
 
+### Magister-API in de gaten houden
+
+Magister publiceert geen changelog. Nieuwe velden of hele rubrieken vallen
+daardoor pas op als er iets stukgaat. Met `tools/magister_api_diff.py` vergelijk
+je twee ruwe API-dumps, zodat je vooraf ziet wat er veranderd is:
+
+```bash
+# 1. Maak een nulmeting (draai dit buiten Home Assistant, met je eigen account)
+export MAGISTER_USERNAME="gebruiker@school.nl"
+export MAGISTER_PASSWORD="wachtwoord"
+python3 custom_components/magister_school/script/magister.py --json \
+  --dump-raw baseline.json --schoolserver <school>.magister.net
+
+# 2. Herhaal dit later en vergelijk
+python3 tools/magister_api_diff.py baseline.json current.json
+```
+
+Uitvoer per endpoint: `+` nieuw veld, `-` verdwenen veld, `~` type gewijzigd,
+en een regel voor endpoints die maar in één van de twee dumps zitten. Query-
+strings en getallen in het pad worden genegeerd, zodat een andere datum of een
+ander leerling-id geen ruis oplevert.
+
+Exitcode `0` = identiek, `1` = verschillen gevonden, `2` = invoerfout. Met
+`--json` krijg je het rapport als JSON, wat het bruikbaar maakt in een cronjob
+of GitHub Action. Tests: `pytest -q test_api_diff.py`.
+
 ## 🗃️ Database
 
 Omvangrijke attributen worden sinds **v2.2.1** automatisch uitgesloten van de

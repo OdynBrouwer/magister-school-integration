@@ -1,5 +1,12 @@
 # Magister repository instructions
 
+## Repository scope
+
+- This repository **is** the published HACS integration; changes here go straight to users.
+- Only `custom_components/magister_school/` is shipped by HACS. `tools/`, tests, `blueprints/`, `card/` and release paperwork are repository-only.
+- `tools/` holds developer tooling. Never import it from the integration and never move it into `custom_components/`.
+- The local Home Assistant test installation and the Lovelace card live in separate folders/repositories outside this one. Never edit, copy or sync those from here.
+
 ## Home Assistant
 
 - For primary Home Assistant checks, use `ha-primary-core` first.
@@ -35,9 +42,9 @@
 
 ## API monitoring
 
-- Magister has no public changelog; detect API changes with `--dump-raw` plus `python tools/magister_api_diff.py baseline.json current.json`.
-- Extend the dump/diff pair, never a scraper, when a new endpoint has to be watched.
-- Tests for the diff tool live in `test_api_diff.py`.
+- Magister has no public changelog. New fields: `--dump-raw` plus `python tools/magister_api_diff.py baseline.json current.json`.
+- New features/rubrieken and login changes: `python tools/magister_bundle_diff.py --schoolserver <school>.magister.net` (public bundles, no account needed).
+- Tests: `test_api_diff.py` and `test_bundle_diff.py`.
 
 ## Issue closure
 

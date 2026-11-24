@@ -14,7 +14,7 @@
 - Use `main` as the normal target branch.
 - **Every change is published as a beta first.** Always bump to the next `vX.Y.ZbN` and create a prerelease.
 - Never publish a stable release unless the user explicitly asks for "volledige versie" / "stable".
-- Use the convention `v2.3.2bN` with a matching manifest `2.3.2bN`.
+- Use the convention `vX.Y.ZbN` with a matching manifest `X.Y.ZbN`.
 - Create prereleases with `gh release create <tag> --prerelease --target main`.
 - When the user asks to remove older betas, delete the release **and** its tag: `gh release delete <tag> --yes --cleanup-tag`.
 
@@ -33,8 +33,12 @@
 - Run JSON validation and `git diff --check`.
 - Do not commit or push until the requested beta/release work is confirmed.
 
+## API monitoring
+
+- Magister has no public changelog; detect API changes with `--dump-raw` plus `python tools/magister_api_diff.py baseline.json current.json`.
+- Extend the dump/diff pair, never a scraper, when a new endpoint has to be watched.
+- Tests for the diff tool live in `test_api_diff.py`.
+
 ## Issue closure
 
-- Close #51 only after rate-limit tests and b4 or later.
-- Close #50 only after card-resource startup is lock-safe and tested.
-- Close #49 only after height options are built into the bundled card and tested.
+- Close an issue only after the fixing code is built, tested and published as a beta.

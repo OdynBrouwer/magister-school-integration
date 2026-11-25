@@ -1,3 +1,35 @@
+# Release v2.4.1b0 (beta)
+
+## GitHub release text
+
+Magister School Integration v2.4.1b0 zorgt dat een **rate limit van Magister niet meer een hele verversing weggooit**. Alleen het verzoek dat geweigerd werd wacht en gaat daarna verder; de rest van de gegevens komt gewoon binnen.
+
+### Opgelost
+
+- **HTTP 429 zonder JSON-body werd niet herkend.** Magister kan een rate limit ook met een leeg antwoord en alleen een `Retry-After`-header terugsturen. Die reactie werd behandeld als "geen JSON-antwoord", waardoor de verversing zonder data verder liep. Nu wordt 429 altijd als rate limit herkend, ook zonder JSON.
+- **`Retry-After` werd genegeerd.** Ontbreekt `secondsLeft` in het antwoord, dan wordt nu de `Retry-After`-header gebruikt in plaats van een vaste 17 seconden.
+
+### Verbeterd
+
+- **Alleen het geweigerde verzoek opnieuw.** Waar voorheen de hele fetch afbrak, wacht nu alleen dat ene verzoek tot de cooldown voorbij is en probeert het daarna opnieuw (maximaal 3 pogingen). De rest van de gegevens blijft binnenkomen.
+- **Gedeelde cooldown.** Studiewijzer-onderdelen worden parallel opgehaald. Alle workers delen nu één cooldown met een lock, zodat ze Magister niet allemaal opnieuw lastigvallen tijdens dezelfde limiet.
+- **Cooldown overleeft een re-login.** Wordt een gecachet token geweigerd en moet de integratie opnieuw inloggen, dan blijft de eerder opgelopen wachttijd gelden.
+- **Nette grens aan het wachten.** De retry stopt na 65 seconden, binnen de 90-seconden-timeout van het subprocess. Duurt de cooldown langer, dan geeft de integratie het op zoals voorheen in plaats van te worden afgebroken door de timeout.
+
+### Met dank aan
+
+- **@Niek** ([#52](https://github.com/OdynBrouwer/magister-school-integration/pull/52)) — opnieuw een scherpe bijdrage: rate limits blokkeren de verversing niet meer en de cooldown wordt netjes gedeeld tussen parallelle verzoeken. 🙏
+
+### Tests
+
+- 6 nieuwe tests in `test_timeout_recovery.py`: een 200-met-`secondsLeft`, een 429 met alleen `Retry-After`, het delen van de cooldown tussen workers en het respecteren van de deadline. Totaal nu 246 tests.
+
+### HACS update text
+
+Beta: een rate limit van Magister gooit niet langer een hele verversing weg — alleen het geweigerde verzoek wacht en hervat. 429 wordt nu ook zonder JSON-body herkend en `Retry-After` wordt gebruikt. Met dank aan @Niek.
+
+## Previous release: v2.4.0
+
 # Release v2.4.0
 
 ## GitHub release text

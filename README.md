@@ -21,6 +21,16 @@ Integreer Magister schoolinformatie direct in je Home Assistant dashboard. Toon 
 - **💾 Recorder-vriendelijk** - Omvangrijke attributen automatisch uitgesloten van de recorder-historie
 - **📬 Berichten & Mededelingen** - Aantal ongelezen berichten en mededelingen, met de nieuwste als attribuut
 
+## ✨ Nieuw in v2.4.1
+
+Rate limits van Magister gooien geen hele verversing meer weg.
+
+- **Alleen het geweigerde verzoek wacht** en probeert het daarna opnieuw, in plaats van de hele fetch af te breken. De rest van de gegevens komt gewoon binnen.
+- **HTTP 429 zonder JSON-body** wordt nu ook als rate limit herkend (voorheen leek dat op "geen JSON-antwoord").
+- **`Retry-After`** wordt gebruikt als `secondsLeft` ontbreekt.
+- **Gedeelde cooldown** tussen de parallel opgehaalde studiewijzer-onderdelen, en de wachttijd blijft gelden na een re-login.
+- Met dank aan **@Niek** ([#52](https://github.com/OdynBrouwer/magister-school-integration/pull/52)).
+
 ## ✨ Nieuw in v2.4.0
 
 Eerste uitbreiding die uit de API-verkenning kwam: **berichten** en **mededelingen** zijn nu beschikbaar, en het inloggen is robuuster.

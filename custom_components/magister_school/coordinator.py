@@ -1,5 +1,6 @@
 import logging
 from datetime import timedelta
+from typing import Any
 
 from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
@@ -53,10 +54,10 @@ class MagisterDataUpdateCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(seconds=poll_interval),
         )
 
-    async def _async_update_data(self):
+    async def _async_update_data(self) -> dict[str, Any]:
         try:
             data = await self.hass.async_add_executor_job(self.api.get_data)
-            if not data.get("kinderen"):
+            if not isinstance(data, dict) or not data.get("kinderen"):
                 raise UpdateFailed("No student data returned by Magister")
             ir.async_delete_issue(self.hass, DOMAIN, self._issue_id)
             _LOGGER.debug("Magister data succesvol opgehaald")

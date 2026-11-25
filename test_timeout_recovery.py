@@ -19,6 +19,7 @@ ROOT = Path(__file__).parent / "custom_components" / "magister_school"
 
 def load_module(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
+    assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -324,11 +325,15 @@ def coordinator_module(monkeypatch):
         monkeypatch.setitem(sys.modules, name, MagicMock())
     registry = MagicMock()
     monkeypatch.setitem(sys.modules, "homeassistant.helpers.issue_registry", registry)
-    sys.modules["homeassistant.helpers"].issue_registry = registry
+    setattr(sys.modules["homeassistant.helpers"], "issue_registry", registry)
     monkeypatch.setitem(sys.modules, "homeassistant.helpers.update_coordinator", SimpleNamespace(
         DataUpdateCoordinator=DataUpdateCoordinator, UpdateFailed=UpdateFailed,
     ))
-    sys.modules["homeassistant.exceptions"].ConfigEntryAuthFailed = type("ConfigEntryAuthFailed", (Exception,), {})
+    setattr(
+        sys.modules["homeassistant.exceptions"],
+        "ConfigEntryAuthFailed",
+        type("ConfigEntryAuthFailed", (Exception,), {}),
+    )
     package = ModuleType("magister_test")
     package.__path__ = [str(ROOT)]
     monkeypatch.setitem(sys.modules, "magister_test", package)

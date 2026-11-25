@@ -12,6 +12,7 @@ script_path = os.path.join(
     "custom_components", "magister_school", "script", "magister.py"
 )
 spec = importlib.util.spec_from_file_location("magister", script_path)
+assert spec is not None and spec.loader is not None
 magister = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(magister)
 
@@ -73,16 +74,12 @@ class TestWasAfwijkend:
         item["Status"] = 7
         assert magister._remember_was_afwijkend(history, "child", item) is True
 
-    def test_history_prunes_oldest_entries(self):
-        original = magister.HISTORY_LIMIT
-        magister.HISTORY_LIMIT = 3
-        try:
-            history = {}
-            for i in range(5):
-                magister._remember_was_afwijkend(history, "child", {"Id": i, "Status": 3})
-            assert len(history) <= 3
-        finally:
-            magister.HISTORY_LIMIT = original
+    def test_history_prunes_oldest_entries(self, monkeypatch):
+        monkeypatch.setattr(magister, "HISTORY_LIMIT", 3)
+        history = {}
+        for i in range(5):
+            magister._remember_was_afwijkend(history, "child", {"Id": i, "Status": 3})
+        assert len(history) <= 3
 
 
 class TestHuiswerkAfgerond:
@@ -782,6 +779,7 @@ def test_api_reports_incomplete_sections(monkeypatch, caplog, skipped):
     ))
     api_path = os.path.join(os.path.dirname(script_path), "..", "api.py")
     api_spec = importlib.util.spec_from_file_location("magister_api_test.api", api_path)
+    assert api_spec is not None and api_spec.loader is not None
     api = importlib.util.module_from_spec(api_spec)
     api_spec.loader.exec_module(api)
     data = {"kinderen": {"Student": {}}}
@@ -998,12 +996,14 @@ def _load_api_module():
     const_spec = importlib.util.spec_from_file_location(
         f"{pkg_name}.const", os.path.join(component, "const.py")
     )
+    assert const_spec is not None and const_spec.loader is not None
     const = importlib.util.module_from_spec(const_spec)
     sys.modules[f"{pkg_name}.const"] = const
     const_spec.loader.exec_module(const)
 
     path = os.path.join(component, "api.py")
     spec = importlib.util.spec_from_file_location(f"{pkg_name}.api", path)
+    assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[f"{pkg_name}.api"] = module
     spec.loader.exec_module(module)
@@ -1188,9 +1188,10 @@ class TestHerhaling:
 
         wanted = {"object_data", "_herhaling", "_is_herhalend", "_is_elke_werkdag"}
         chunks = [
-            ast.get_source_segment(source, node)
+            segment
             for node in tree.body
             if isinstance(node, ast.FunctionDef) and node.name in wanted
+            if (segment := ast.get_source_segment(source, node)) is not None
         ]
         assert len(chunks) == 4, f"expected 4 helpers, got {len(chunks)}"
 
@@ -1262,13 +1263,14 @@ class TestCategorie:
         wanted = {"object_data", "object_list", "infotstr", "_appointment_category"}
         consts = {"AFSPRAAK_TYPE"}
         chunks = [
-            ast.get_source_segment(source, node)
+            segment
             for node in tree.body
             if (isinstance(node, ast.FunctionDef) and node.name in wanted)
             or (
                 isinstance(node, ast.Assign)
                 and any(isinstance(t, ast.Name) and t.id in consts for t in node.targets)
             )
+            if (segment := ast.get_source_segment(source, node)) is not None
         ]
         namespace = {}
         exec("\n\n".join(chunks), namespace)

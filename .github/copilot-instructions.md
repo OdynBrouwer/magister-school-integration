@@ -35,7 +35,9 @@
 
 ## Validation
 
-- Run `pytest -q test_issue_fixes.py test_timeout_recovery.py`.
+- Run `pytest -q test_issue_fixes.py test_timeout_recovery.py test_api_diff.py test_bundle_diff.py test_postvak.py test_card_resources.py`.
+- Run pyright with the repo config: `npx --yes pyright@latest` (must report 0 errors).
+- The venv needs `homeassistant`, `voluptuous` and `pytest` installed (`uv pip install --python venv\Scripts\python.exe <pkg>`) so imports resolve in Pylance.
 - Run card build with `Push-Location card; npm run build; Pop-Location`.
 - Run JSON validation and `git diff --check`.
 - Do not commit or push until the requested beta/release work is confirmed.

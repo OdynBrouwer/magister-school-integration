@@ -4,9 +4,9 @@ import asyncio
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 from homeassistant.components.http import StaticPathConfig
-from homeassistant.components.lovelace.const import LOVELACE_DATA
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
@@ -19,6 +19,23 @@ _LOGGER = logging.getLogger(__name__)
 CARD_FILENAME = "magister-school-card.js"
 CARD_URL = f"/{DOMAIN}/{CARD_FILENAME}"
 PLATFORMS = ["sensor", "calendar"]
+
+# Home Assistant exposes the Lovelace data under its own domain key. That key is
+# the same string as ``LOVELACE_DATA``, which moved between Home Assistant
+# releases, so the literal key keeps this working across versions.
+LOVELACE_KEY = "lovelace"
+
+
+def _lovelace_resources(lovelace_data: object) -> Any:
+    """Return the Lovelace resource collection for either data layout.
+
+    Recent releases store a ``LovelaceData`` dataclass, older ones a plain dict
+    under the same key, so the collection is typed as ``Any``.
+    """
+    resources = getattr(lovelace_data, "resources", None)
+    if resources is None and isinstance(lovelace_data, dict):
+        resources = lovelace_data.get("resources")
+    return resources
 
 
 def _card_version() -> str:
@@ -48,7 +65,7 @@ async def _async_register_card(hass: HomeAssistant) -> None:
             )
             domain_data["card_static_registered"] = True
 
-        resources = getattr(hass.data.get(LOVELACE_DATA), "resources", None)
+        resources = _lovelace_resources(hass.data.get(LOVELACE_KEY))
         if resources is None or not hasattr(resources, "async_create_item"):
             _LOGGER.debug("Lovelace resources unavailable, not registering card")
             return

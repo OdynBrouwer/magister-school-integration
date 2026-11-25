@@ -1,3 +1,32 @@
+# Release v2.4.1b1 (beta)
+
+## GitHub release text
+
+Magister School Integration v2.4.1b1 maakt de codebase **statisch schoon**: pyright/Pylance meldt nul fouten over de hele repository. Er verandert niets aan wat je in Home Assistant ziet.
+
+### Waarom er zoveel meldingen stonden
+
+De ontwikkelomgeving (`venv/`) bevatte geen Home Assistant, waardoor elke `from homeassistant...`-import in de editor als fout verscheen. Dat is nu opgelost: Home Assistant staat in de venv en `pyrightconfig.json` wijst pyright naar die omgeving. De mappen `venv/`, `card/` en de gitignorde `test_trevianum*.py` worden niet meer geanalyseerd.
+
+### Opgelost
+
+- **`sensor.py` — 81 meldingen weg.** De twintig sensoren overschreven `state`, maar Home Assistant markeert dat als `final`; de officiële uitbreidingshaak is `native_value`. Alle twintig zijn omgezet, met identiek gedrag (runtime gecontroleerd). De `name`-property is vervangen door `_attr_name`.
+- **`__init__.py` — `LOVELACE_DATA` wordt niet meer geïmporteerd.** Die constante is tussen Home Assistant-releases van plek veranderd; de kaartregistratie leest de Lovelace-data nu via de stabiele domeinsleutel en ondersteunt zowel de dataclass- als de dict-vorm. Daarmee werkt de registratie ook op een oudere HA-indeling.
+- **`coordinator.py`** — `_async_update_data` heeft een expliciet retourtype en controleert of Magister daadwerkelijk een woordenboek terugstuurde voordat het `get()` aanroept.
+- **`magister.py`** — `response` is geïnitialiseerd, zodat de retry-lus van @Niek geen "possibly unbound" meer oplevert.
+- **Tests** — `spec_from_file_location`-resultaten worden gecontroleerd, `HISTORY_LIMIT` gaat via `monkeypatch` en de AST-fragmenten filteren `None` eruit.
+
+### Nieuw
+
+- `pyrightconfig.json` in de repository, zodat editor en CI dezelfde omgeving gebruiken.
+- **3 tests** in `test_card_resources.py` voor de Lovelace-helper (dataclass-vorm, dict-vorm, geen collectie). Totaal nu 249 tests.
+
+### HACS update text
+
+Beta: opgeruimde types in de hele codebase (pyright schoon), `native_value` in plaats van de final `state`-property, en kaartregistratie die niet meer afhankelijk is van een tussen releases verhuisde HA-constante. Geen zichtbare gedragswijziging.
+
+## Previous release: v2.4.1b0
+
 # Release v2.4.1b0 (beta)
 
 ## GitHub release text

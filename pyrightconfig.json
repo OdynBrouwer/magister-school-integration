@@ -1,0 +1,17 @@
+{
+  "venvPath": ".",
+  "venv": "venv",
+  "pythonVersion": "3.12",
+  "include": [
+    "custom_components",
+    "tools",
+    "test_*.py"
+  ],
+  "exclude": [
+    "venv",
+    "card",
+    "**/node_modules",
+    "**/__pycache__",
+    "test_trevianum*.py"
+  ]
+}

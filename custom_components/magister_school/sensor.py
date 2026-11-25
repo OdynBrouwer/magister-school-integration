@@ -1,3 +1,6 @@
+# Home Assistant declares these on Entity as @cached_property, while a sensor
+# needs a dynamic @property because the value changes on every coordinator update.
+# pyright: reportIncompatibleVariableOverride=false
 # sensor.py
 import logging
 from datetime import datetime, time
@@ -188,7 +191,7 @@ class KindOverviewSensor(SensorEntity):
         self._attr_icon = "mdi:school"
 
     @property
-    def state(self):
+    def native_value(self):
         kind_data = self._get_kind_data()
         return kind_data.get("aantal_afspraken_vandaag", 0) if kind_data else 0
 
@@ -327,15 +330,11 @@ class MagisterMainSensor(SensorEntity):
 
     def __init__(self, coordinator, name):
         self._coordinator = coordinator
-        self._name = name
+        self._attr_name = name
         self._attr_unique_id = f"{coordinator.entry_id}_magister_main_data"
 
     @property
-    def name(self):
-        return self._name
-
-    @property
-    def state(self):
+    def native_value(self):
         """Return de laatste update tijd."""
         if self._coordinator.data:
             return self._coordinator.data.get("last_update", "unknown")
@@ -388,7 +387,7 @@ class MagisterOngelezenBerichtenSensor(SensorEntity):
         return berichten if isinstance(berichten, dict) else {}
 
     @property
-    def state(self):
+    def native_value(self):
         ongelezen = self._get_berichten().get("ongelezen")
         return ongelezen if isinstance(ongelezen, int) else 0
 
@@ -433,7 +432,7 @@ class MagisterMededelingenSensor(SensorEntity):
         return mededelingen if isinstance(mededelingen, dict) else {}
 
     @property
-    def state(self):
+    def native_value(self):
         aantal = self._get_mededelingen().get("aantal")
         return aantal if isinstance(aantal, int) else 0
 
@@ -471,7 +470,7 @@ class KindAantalAfsprakenSensor(SensorEntity):
         self._attr_icon = "mdi:calendar-today"
 
     @property
-    def state(self):
+    def native_value(self):
         kind_data = self._get_kind_data()
         return kind_data.get("aantal_afspraken_vandaag", 0) if kind_data else 0
 
@@ -517,7 +516,7 @@ class KindAantalHuiswerkSensor(SensorEntity):
         self._attr_icon = "mdi:book-education"
 
     @property
-    def state(self):
+    def native_value(self):
         kind_data = self._get_kind_data()
         return kind_data.get("aantal_huiswerk", 0) if kind_data else 0
 
@@ -568,7 +567,7 @@ class KindVolgendeAfspraakSensor(SensorEntity):
         self._attr_icon = "mdi:clock-outline"
 
     @property
-    def state(self):
+    def native_value(self):
         kind_data = self._get_kind_data()
         return kind_data.get("volgende_afspraak", "Geen") if kind_data else "Geen"
 
@@ -615,7 +614,7 @@ class KindCijfersSensor(SensorEntity):
         self._attr_icon = "mdi:certificate"
 
     @property
-    def state(self):
+    def native_value(self):
         if not self._coordinator.data:
             return 0
         cijfers = self._coordinator.data.get("cijfers", {}).get(self._kind_naam, [])
@@ -662,7 +661,7 @@ class KindAfsprakenSensor(SensorEntity):
         self._attr_icon = "mdi:calendar"
 
     @property
-    def state(self):
+    def native_value(self):
         kind_data = self._get_kind_data()
         afspraken = kind_data.get("afspraken", []) if kind_data else []
         return len(afspraken)
@@ -713,7 +712,7 @@ class KindRoosterWijzigingenSensor(SensorEntity):
         self._attr_icon = "mdi:calendar-alert"
 
     @property
-    def state(self):
+    def native_value(self):
         kind_data = self._get_kind_data()
         wijzigingen = kind_data.get("wijzigingen", []) if kind_data else []
         return len(wijzigingen)
@@ -760,7 +759,7 @@ class KindOpdrachtenSensor(SensorEntity):
         self._attr_icon = "mdi:clipboard-list"
 
     @property
-    def state(self):
+    def native_value(self):
         if not self._coordinator.data:
             return 0
         opdrachten = self._coordinator.data.get("opdrachten", {}).get(self._kind_naam, [])
@@ -807,7 +806,7 @@ class KindAbsentiesSensor(SensorEntity):
         self._attr_icon = "mdi:account-clock"
 
     @property
-    def state(self):
+    def native_value(self):
         if not self._coordinator.data:
             return 0
         absenties = self._coordinator.data.get("absenties", {}).get(self._kind_naam, [])
@@ -854,7 +853,7 @@ class KindStudiewijzersSensor(SensorEntity):
         self._attr_icon = "mdi:book-open-variant"
 
     @property
-    def state(self):
+    def native_value(self):
         if not self._coordinator.data:
             return 0
         studiewijzers = self._coordinator.data.get("studiewijzers", {}).get(self._kind_naam, [])
@@ -900,7 +899,7 @@ class KindActiviteitenSensor(SensorEntity):
         self._attr_icon = "mdi:calendar-star"
 
     @property
-    def state(self):
+    def native_value(self):
         if not self._coordinator.data:
             return 0
         activiteiten = self._coordinator.data.get("activiteiten", {}).get(self._kind_naam, [])
@@ -946,7 +945,7 @@ class KindAanmeldingenSensor(SensorEntity):
         self._attr_icon = "mdi:school"
 
     @property
-    def state(self):
+    def native_value(self):
         kind_data = self._get_kind_data()
         aanmeldingen = kind_data.get("aanmeldingen", []) if kind_data else []
         return len(aanmeldingen)
@@ -993,7 +992,7 @@ class KindSchoolStartVandaagSensor(SensorEntity):
         self._attr_icon = "mdi:clock-start"
 
     @property
-    def state(self):
+    def native_value(self):
         kind_data = self._get_kind_data()
         lessen = _get_school_start_items(kind_data)
         vandaag = datetime.now().date()
@@ -1039,7 +1038,7 @@ class KindSchoolEindeVandaagSensor(SensorEntity):
         self._attr_icon = "mdi:clock-end"
 
     @property
-    def state(self):
+    def native_value(self):
         kind_data = self._get_kind_data()
         lessen = _get_school_lessen(kind_data)
         vandaag = datetime.now().date()
@@ -1097,7 +1096,7 @@ class KindVolgendeSchooldagSensor(SensorEntity):
         return min(toekomstige_data) if toekomstige_data else None
 
     @property
-    def state(self):
+    def native_value(self):
         dag = self._volgende_dag()
         return dag.strftime("%Y-%m-%d") if dag else "Geen"
 
@@ -1138,7 +1137,7 @@ class KindVolgendeSchooldagStartSensor(SensorEntity):
         self._attr_icon = "mdi:clock-start"
 
     @property
-    def state(self):
+    def native_value(self):
         kind_data = self._get_kind_data()
         lessen = _get_school_start_items(kind_data)
         vandaag = datetime.now().date()
@@ -1193,7 +1192,7 @@ class KindVolgendeSchooldagEindeSensor(SensorEntity):
         self._attr_icon = "mdi:clock-end"
 
     @property
-    def state(self):
+    def native_value(self):
         kind_data = self._get_kind_data()
         lessen = _get_school_lessen(kind_data)
         vandaag = datetime.now().date()

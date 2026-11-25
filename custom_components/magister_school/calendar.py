@@ -1,3 +1,6 @@
+# Home Assistant declares these on Entity as @cached_property, while a calendar
+# needs a dynamic @property because the value changes on every coordinator update.
+# pyright: reportIncompatibleVariableOverride=false
 import copy
 from datetime import date, datetime, timedelta
 import logging

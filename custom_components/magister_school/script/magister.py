@@ -781,6 +781,7 @@ class Magister:
 
         path = "/".join(str(_) for _ in args)
         url = f"https://{self.schoolserver}/api/{path}{qs}"
+        response: Any = None
         for attempt in range(3):
             self._rate_limit.wait()
             try:

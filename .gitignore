@@ -31,3 +31,5 @@ readmeforum.md
 .local/config.sh
 # Alleen voor Claude + brain-MCP, geen onderdeel van de integratie
 CLAUDE.md
+# Artefacten van de AI-assistent (lokale herinneringen/logs)
+.github/copilot-memories.jsonl

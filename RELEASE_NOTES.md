@@ -1,3 +1,35 @@
+# Release v2.4.1b2 (beta)
+
+## GitHub release text
+
+Magister School Integration v2.4.1b2 verhelpt een **blokkerende bestandslezing in de event loop**. Home Assistant logde twee waarschuwingen per herstart:
+
+```
+Detected blocking call to read_text with args (PosixPath('.../manifest.json'),)
+inside the event loop by custom integration 'magister_school'
+```
+
+### Oorzaak
+
+Sinds v2.3.2 leest de kaartregistratie `manifest.json` om de cache-bustende `?v=`-versie te bepalen. Dat gebeurde rechtstreeks in de event loop, en dat mag niet van Home Assistant.
+
+### Opgelost
+
+- **Versie via de loader.** De versie komt nu uit Home Assistant's eigen integratie-loader (`async_get_integration`), die al gecacht is. Er wordt dus helemaal geen bestand meer gelezen.
+- **`is_file()` naar de executor.** De controle of de meegeleverde kaart bestaat, gebeurt nu via `hass.async_add_executor_job` in plaats van in de event loop.
+
+Beide wijzigingen zijn gedragsneutraal: de resource-URL blijft `?v=<versie>`, en bij een ontbrekende versie of integratie valt hij terug op `0`.
+
+### Nieuw
+
+- **3 tests** in `test_card_resources.py` voor de versiebepaling (normaal, ontbrekende versie, onbekende integratie). Totaal nu 252 tests.
+
+### HACS update text
+
+Beta: geen blokkerende bestandslezing meer in de event loop (de `read_text`/`open`-waarschuwingen in het HA-log verdwijnen). De kaartversie komt nu uit Home Assistant's eigen loader.
+
+## Previous release: v2.4.1b1
+
 # Release v2.4.1b1 (beta)
 
 ## GitHub release text

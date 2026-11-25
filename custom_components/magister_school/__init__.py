@@ -1,7 +1,6 @@
 """Magister School integration setup."""
 
 import asyncio
-import json
 import logging
 from pathlib import Path
 from typing import Any
@@ -10,6 +9,7 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
+from homeassistant.loader import IntegrationNotFound, async_get_integration
 
 from .const import DEFAULT_POLL_INTERVAL, DOMAIN
 from .coordinator import MagisterDataUpdateCoordinator
@@ -38,15 +38,17 @@ def _lovelace_resources(lovelace_data: object) -> Any:
     return resources
 
 
-def _card_version() -> str:
-    """Return the integration version, used to bust the browser cache."""
+async def _card_version(hass: HomeAssistant) -> str:
+    """Return the integration version, used to bust the browser cache.
+
+    The version comes from Home Assistant's own integration loader, which is
+    cached, so no file is read from the event loop.
+    """
     try:
-        manifest = json.loads(
-            (Path(__file__).parent / "manifest.json").read_text(encoding="utf-8")
-        )
-    except (OSError, ValueError):
+        integration = await async_get_integration(hass, DOMAIN)
+    except IntegrationNotFound:
         return "0"
-    return str(manifest.get("version", "0"))
+    return str(integration.version or "0")
 
 
 async def _async_register_card(hass: HomeAssistant) -> None:
@@ -57,11 +59,12 @@ async def _async_register_card(hass: HomeAssistant) -> None:
     async with registration_lock:
         if not domain_data.get("card_static_registered"):
             www_dir = Path(__file__).parent / "www"
-            if not (www_dir / CARD_FILENAME).is_file():
+            card_path = www_dir / CARD_FILENAME
+            if not await hass.async_add_executor_job(card_path.is_file):
                 _LOGGER.debug("Bundled Magister card not found, skipping registration")
                 return
             await hass.http.async_register_static_paths(
-                [StaticPathConfig(CARD_URL, str(www_dir / CARD_FILENAME), False)]
+                [StaticPathConfig(CARD_URL, str(card_path), False)]
             )
             domain_data["card_static_registered"] = True
 
@@ -73,7 +76,7 @@ async def _async_register_card(hass: HomeAssistant) -> None:
         if not getattr(resources, "loaded", True):
             await resources.async_get_info()
 
-        desired_url = f"{CARD_URL}?v={_card_version()}"
+        desired_url = f"{CARD_URL}?v={await _card_version(hass)}"
         matching_item = next(
             (
                 item

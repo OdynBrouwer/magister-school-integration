@@ -29,6 +29,7 @@ Rate limits van Magister gooien geen hele verversing meer weg.
 - **HTTP 429 zonder JSON-body** wordt nu ook als rate limit herkend (voorheen leek dat op "geen JSON-antwoord").
 - **`Retry-After`** wordt gebruikt als `secondsLeft` ontbreekt.
 - **Gedeelde cooldown** tussen de parallel opgehaalde studiewijzer-onderdelen, en de wachttijd blijft gelden na een re-login.
+- **Geen blokkerende bestandslezing** meer in de event loop: de kaartversie komt uit Home Assistant's eigen integratie-loader, dus de `read_text`/`open`-waarschuwingen in het log verdwijnen.
 - Met dank aan **@Niek** ([#52](https://github.com/OdynBrouwer/magister-school-integration/pull/52)).
 
 ## ✨ Nieuw in v2.4.0

@@ -1,3 +1,27 @@
+# Release v2.4.1
+
+## GitHub release text
+
+Magister School Integration v2.4.1 is de stabiele release die de vier betaversies (v2.4.1b0–b3) samenbrengt: robuuste afhandeling van rate limits en time-outs, en een codebase zonder blokkerende bestandslezingen.
+
+### Sinds v2.4.0 verbeterd
+
+- **Rate limit gooit niet meer de hele verversing weg.** Alleen het geweigerde verzoek wacht op de gedeelde cooldown en wordt opnieuw geprobeerd (maximaal 3 keer, binnen het 90s-budget). HTTP 429 zonder JSON-body wordt herkend en `Retry-After` wordt gerespecteerd; de cooldown overleeft een re-login. (PR #52, met dank aan @Niek.)
+- **Een trage Magister is geen ERROR meer.** Time-outs van losse HTTP-verzoeken verschijnen nu als WARNING "Magister is tijdelijk niet beschikbaar", net zoals HTTP 502/503/504 dat al deden.
+- **Geen blokkerende bestandslezing meer in de event loop.** De kaartversie komt uit de integratie-loader van Home Assistant in plaats van `manifest.json`; de `is_file()`-controle loopt via de executor.
+- **Schoolneutrale foutmeldingen.** De hardcoded schoolnaam is uit de publieke meldingen gehaald.
+- **Codebase pyright-schoon** en de sensoren gebruiken `native_value` in plaats van de final `state`-property.
+
+### Met dank aan
+
+**@Niek** voor de rate-limit-resume (PR #52) en de eerdere timeout-recovery.
+
+### HACS update text
+
+Robuustere Magister-koppeling: rate limits en trage reacties worden netjes opgevangen, en een trage Magister meldt zich als waarschuwing in plaats van een fout. 🙏 Met dank aan @Niek voor de rate-limit-verbeteringen!
+
+## Previous release: v2.4.1b3
+
 # Release v2.4.1b3 (beta)
 
 ## GitHub release text

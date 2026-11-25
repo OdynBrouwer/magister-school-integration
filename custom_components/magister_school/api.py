@@ -122,10 +122,17 @@ class MagisterAPI:
 
             if attempt:
                 status_match = re.search(r"HTTP (502|503|504)", error)
-                if status_match:
+                # Alleen time-outs van losse HTTP-verzoeken (script meldt de host);
+                # de 90s-subprocess-timeout is ons eigen budget en blijft TimeoutError.
+                timed_out = "timed out after" in error and "script timed out" not in error
+                if status_match or timed_out:
+                    reason = (
+                        f"HTTP {status_match.group(1)}" if status_match else "time-out"
+                    )
                     raise MagisterUnavailable(
-                        f"Magister is tijdelijk niet beschikbaar (HTTP {status_match.group(1)}). "
-                        "Dit is een storing bij Magister/Trevianum, niet bij de Home Assistant-integratie."
+                        f"Magister is tijdelijk niet beschikbaar ({reason}). "
+                        "Dit is doorgaans een storing of traagheid bij Magister, "
+                        "niet bij de Home Assistant-integratie."
                     ) from None
                 raise TimeoutError(error) from None
             retry_seconds = 2

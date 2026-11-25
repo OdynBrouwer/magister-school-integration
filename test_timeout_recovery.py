@@ -222,6 +222,23 @@ def test_temporary_server_status_maps_to_magister_unavailable(monkeypatch, statu
     sleep.assert_called_once_with(2)
 
 
+def test_request_timeout_maps_to_magister_unavailable(monkeypatch):
+    stderr = "Magister request to example.magister.net timed out after 15.1s\n"
+    failure = subprocess.CalledProcessError(75, "python3", stderr=stderr)
+    run = Mock(side_effect=[failure, failure])
+    sleep = Mock()
+    monkeypatch.setattr(api.subprocess, "run", run)
+    monkeypatch.setattr(api.time, "sleep", sleep)
+    client = api.MagisterAPI("school", "user", "password")
+
+    with pytest.raises(api.MagisterUnavailable, match="time-out") as caught:
+        client.get_data()
+
+    assert "niet bij de Home Assistant-integratie" in str(caught.value)
+    assert run.call_count == 2
+    sleep.assert_called_once_with(2)
+
+
 @pytest.mark.parametrize("result", [
     subprocess.CalledProcessError(1, "python3"),
     subprocess.CalledProcessError(2, "python3"),  # argparse failure, not a timeout

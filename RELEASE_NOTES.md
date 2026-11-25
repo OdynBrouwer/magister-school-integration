@@ -1,3 +1,25 @@
+# Release v2.4.1b3 (beta)
+
+## GitHub release text
+
+Magister School Integration v2.4.1b3 maakt dat een **trage Magister-server geen ERROR meer oplevert in het log**. Als een los HTTP-verzoek binnen 15 seconden geen antwoord krijgt, meldt de integratie dat nu als "Magister is tijdelijk niet beschikbaar" — een WARNING met het bijbehorende herstel-issue, precies zoals HTTP 502/503/504 dat al deden.
+
+### Opgelost
+
+- **Time-outs van losse verzoeken waren een ERROR.** Gaf Magister geen antwoord binnen 15 seconden, dan stond er na de dubbele poging "Fout bij ophalen Magister data" als fout in het log. Zo'n time-out wordt nu herkend als tijdelijke onbeschikbaarheid (WARNING + issue `magister_unavailable`).
+- **De 90-seconden-timeout blijft bewust een fout.** Dat is het eigen budget van het subprocess; een overschrijding kan ook een hang in het script zijn en wordt niet als Magister-storing weggezet.
+- **"Trevianum" stond hardcoded in de foutmelding.** Gebruikers van andere scholen zagen die schoolnaam in hun log. De melding is nu schoolneutraal.
+
+### Nieuw
+
+- **1 test** in `test_timeout_recovery.py` voor de time-out→`MagisterUnavailable`-mapping. Totaal nu 253 tests.
+
+### HACS update text
+
+Beta: een trage Magister-server geeft nu een WARNING ("tijdelijk niet beschikbaar") in plaats van een ERROR, en de foutmelding is schoolneutraal.
+
+## Previous release: v2.4.1b2
+
 # Release v2.4.1b2 (beta)
 
 ## GitHub release text

@@ -1,3 +1,20 @@
+# Release v2.4.2
+
+## GitHub release text
+
+Magister School Integration v2.4.2 is een **onderhoudsrelease** die de hassfest-validatie groen maakt: het ongebruikte `brand/magisterlogo.webp` is verwijderd, omdat Home Assistant in de brand-map alleen de vaste bestandsnamen accepteert (`icon.png`, `logo.png`, `icon@2x.png`, `logo@2x.png` en de dark-varianten). Aan de werking van de integratie verandert niets.
+
+### Opgelost
+
+- **hassfest faalde op `brand/magisterlogo.webp`** — het bestand was pixel-identiek aan `brand/icon.png` en wordt nergens gebruikt. Het is verwijderd; `brand/icon.png` blijft het icoon. Een los `logo.png` toevoegen heeft geen zin, want dat zou identiek zijn aan het icoon en hassfest keurt dat expliciet af.
+- **Geen codewijzigingen.** Alleen de brand-map en de versie zijn aangepast.
+
+### HACS update text
+
+Onderhoudsrelease: een ongeldig brand-bestand is verwijderd, zodat hassfest en de HACS-defaultstore-aanvraag weer groen zijn. Geen functionele wijzigingen.
+
+## Previous release: v2.4.1
+
 # Release v2.4.1
 
 ## GitHub release text

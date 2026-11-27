@@ -21,6 +21,10 @@ Integreer Magister schoolinformatie direct in je Home Assistant dashboard. Toon 
 - **💾 Recorder-vriendelijk** - Omvangrijke attributen automatisch uitgesloten van de recorder-historie
 - **📬 Berichten & Mededelingen** - Aantal ongelezen berichten en mededelingen, met de nieuwste als attribuut
 
+## ✨ Nieuw in v2.4.3
+
+Metadata-release: het manifest heeft nu de categorie `productivity_information`, zodat HACS en de integratiecatalogus de integratie correct indelen. Geen functionele wijzigingen.
+
 ## ✨ Nieuw in v2.4.2
 
 Onderhoudsrelease: het ongeldige `brand/magisterlogo.webp` is verwijderd, zodat de hassfest-validatie en de HACS-defaultstore-aanvraag weer groen zijn. Geen functionele wijzigingen.

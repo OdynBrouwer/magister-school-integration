@@ -1,3 +1,20 @@
+# Release v2.4.3
+
+## GitHub release text
+
+Magister School Integration v2.4.3 is een **metadata-release**: het integratiemanifest heeft nu een `categories`-vermelding (`productivity_information`), zodat HACS en de Home Assistant-integratiecatalogus de integratie correct kunnen indelen. Aan de werking van de integratie verandert niets.
+
+### Toegevoegd
+
+- **`categories` in het manifest** — `productivity_information`. Dit is optioneel voor custom integrations, maar het voorkomt de HACS-waarschuwing "The integration manifest has no categories" en maakt de vermelding in de integratiecatalogus compleet.
+- **Geen functionele wijzigingen.**
+
+### HACS update text
+
+Metadata-release: de integratie heeft nu een categorie in het manifest (`productivity_information`). Geen functionele wijzigingen.
+
+## Previous release: v2.4.2
+
 # Release v2.4.2
 
 ## GitHub release text

@@ -29,6 +29,7 @@ LOGS HA/
 test_trevianum*.py
 readmeforum.md
 .local/config.sh
+NEXT_SESSION.md
 # Alleen voor Claude + brain-MCP, geen onderdeel van de integratie
 CLAUDE.md
 # Artefacten van de AI-assistent (lokale herinneringen/logs)

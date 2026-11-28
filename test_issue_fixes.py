@@ -976,6 +976,46 @@ class TestHacsReviewFixes:
         assert "getCardSize" in card
         assert "getGridOptions" in card
 
+    def test_personal_details_are_not_exposed(self):
+        """frenck's post-merge note: geen geboortedatum/stamnummer als attribuut."""
+        script = open(
+            os.path.join(self.COMPONENT, "script", "magister.py"), encoding="utf-8"
+        ).read()
+        assert "'Stamnummer'" not in script
+        assert "'Geboortedatum'" not in script
+
+        pytest.importorskip("homeassistant")
+        sensor = importlib.import_module("custom_components.magister_school.sensor")
+        coordinator = SimpleNamespace(
+            entry_id="test_entry",
+            data={
+                "kinderen": {
+                    "Kind": {
+                        "naam": "Kind",
+                        "klas": "3b",
+                        "profiel": "",
+                        "stamnummer": "12345",
+                        "geboortedatum": "2010-01-01",
+                    }
+                }
+            },
+        )
+        entity = sensor.KindOverviewSensor(coordinator, "Kind", "kind")
+        attributes = entity.extra_state_attributes
+        assert "stamnummer" not in attributes
+        assert "geboortedatum" not in attributes
+        assert attributes["naam"] == "Kind"
+
+        card = open(
+            os.path.join(
+                os.path.dirname(os.path.dirname(self.COMPONENT)),
+                "card", "src", "magister-school-card.js",
+            ),
+            encoding="utf-8",
+        ).read()
+        assert "Stamnummer:" not in card
+        assert "Geboortedatum:" not in card
+
 
 def _load_api_module():
     """Import api.py without Home Assistant by stubbing its relative import."""

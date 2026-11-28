@@ -273,8 +273,6 @@ class KindOverviewSensor(SensorEntity):
 
         attributes = {
             "naam": kind_data.get("naam"),
-            "stamnummer": kind_data.get("stamnummer"),
-            "geboortedatum": kind_data.get("geboortedatum"),
             "klas": kind_data.get("klas"),
             "profiel": kind_data.get("profiel"),
             "aanmeldingen": kind_data.get("aanmeldingen", []),

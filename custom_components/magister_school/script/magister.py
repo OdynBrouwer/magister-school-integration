@@ -1190,8 +1190,6 @@ def main():
         )
         kind_data = {
             "naam": kind_naam,
-            "stamnummer": kind.get('Stamnummer', ''),
-            "geboortedatum": kind.get('Geboortedatum', ''),
             "klas": "",
             "profiel": ""
         }

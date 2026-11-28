@@ -614,10 +614,8 @@ class MagisterSchoolCard extends LitElement {
       <div class="kind-info">
         <h2>${this._kindNaam}</h2>
         <div class="kind-meta">
-          ${this._data.stamnummer ? html`<span>🎫 Stamnummer: ${this._data.stamnummer}</span>` : ''}
           ${this._data.klas ? html`<span>🏫 Klas: ${this._data.klas}</span>` : ''}
           ${this._data.profiel ? html`<span>🧭 Profiel: ${this._data.profiel}</span>` : ''}
-          ${this._data.geboortedatum ? html`<span>🎂 Geboortedatum: ${this._data.geboortedatum}</span>` : ''}
           <span>🕒 Laatste update: ${this.hass.states[this.config.entity].state}</span>
         </div>
       </div>

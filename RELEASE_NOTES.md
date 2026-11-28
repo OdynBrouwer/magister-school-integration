@@ -1,3 +1,20 @@
+# Release v2.4.4
+
+## GitHub release text
+
+Magister School Integration v2.4.4 is een **privacy-release**: `stamnummer` en `geboortedatum` worden niet meer als state-attribuut aangeboden. State-attributen zijn leesbaar voor iedere gebruiker van de Home Assistant-instance en worden door de recorder opgeslagen; deze persoonsgegevens horen daar niet bij. De velden zijn volledig uit de integratie verwijderd — ook uit de onderliggende data en uit de kaart — zodat ze via geen enkele weg meer worden blootgesteld.
+
+### Gewijzigd
+
+- **`stamnummer` en `geboortedatum` verwijderd** uit de dataopbouw in `script/magister.py`, uit de attributen van de kind-sensor in `sensor.py`, uit de weergave in de Lovelace-kaart en uit de README. De attributen `naam`, `klas` en `profiel` blijven bestaan.
+- **Geen andere functionele wijzigingen.**
+
+### HACS update text
+
+Privacy-release: `stamnummer` en `geboortedatum` worden niet meer als state-attribuut aangeboden en zijn volledig uit de integratie en kaart verwijderd.
+
+## Previous release: v2.4.3
+
 # Release v2.4.3
 
 ## GitHub release text

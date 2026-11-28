@@ -21,6 +21,10 @@ Integreer Magister schoolinformatie direct in je Home Assistant dashboard. Toon 
 - **💾 Recorder-vriendelijk** - Omvangrijke attributen automatisch uitgesloten van de recorder-historie
 - **📬 Berichten & Mededelingen** - Aantal ongelezen berichten en mededelingen, met de nieuwste als attribuut
 
+## ✨ Nieuw in v2.4.4
+
+Privacy-release: `stamnummer` en `geboortedatum` worden niet langer als state-attribuut aangeboden. Die velden zijn geschrapt uit de data die de integratie opbouwt, uit de attributen van de kind-sensor, uit de kaart en uit de documentatie. Andere gebruikers van je Home Assistant kunnen ze daardoor niet meer uitlezen, en ze belanden ook niet meer in de recorder-historie.
+
 ## ✨ Nieuw in v2.4.3
 
 Metadata-release: het manifest heeft nu de categorie `productivity_information`, zodat HACS en de integratiecatalogus de integratie correct indelen. Geen functionele wijzigingen.
@@ -261,10 +265,10 @@ Elk kind krijgt een **overzicht-sensor** `sensor.magister_[kind_naam]`
 | Attribuut | Voorbeeld | Beschrijving |
 |---|---|---|
 | `naam` | `Odyn Brouwer` | Volledige naam |
-| `stamnummer` | `12552` | Magister stamnummer |
-| `geboortedatum` | `2010-07-20` | Geboortedatum |
 | `klas` | `Gymnasium 3b` | Huidige klas (uit actieve aanmelding) |
 | `profiel` | `NT` | Profiel (alleen bovenbouw) |
+
+> **Privacy:** sinds v2.4.4 worden `stamnummer` en `geboortedatum` bewust **niet** meer als attribuut aangeboden. Ze zijn daardoor niet leesbaar voor andere gebruikers van je Home Assistant en komen niet in de recorder-historie terecht.
 
 ### Tellingen
 
